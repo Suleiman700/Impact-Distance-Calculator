@@ -8,10 +8,14 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     BackHandler,
+    Pressable,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { spacing, radius, fonts } from '../theme';
 import { useSettings } from '../contexts/SettingsContext';
+import { Ionicons } from '@expo/vector-icons';
+
+import { LEAFLET_CSS, LEAFLET_JS, MARKER_ICON, MARKER_ICON_2X, MARKER_SHADOW } from '../assets/leaflet/leafletSource';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DRAWER_HEIGHT = SCREEN_HEIGHT * 0.75;
@@ -88,9 +92,8 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, onClo
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
+          ${LEAFLET_CSS}
           body { margin: 0; padding: 0; }
           #map { height: 100vh; width: 100vw; background: ${colors.bg}; }
           .leaflet-tile { 
@@ -101,6 +104,20 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, onClo
       <body>
         <div id="map"></div>
         <script>
+          ${LEAFLET_JS}
+          
+          // Configure icons for offline use
+          const DefaultIcon = L.icon({
+            iconUrl: '${MARKER_ICON}',
+            iconRetinaUrl: '${MARKER_ICON_2X}',
+            shadowUrl: '${MARKER_SHADOW}',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+          });
+          L.Marker.prototype.options.icon = DefaultIcon;
+
           const map = L.map('map', {
             zoomControl: false,
             attributionControl: false
@@ -126,14 +143,18 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, onClo
     ` : '';
 
     return (
-        <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
+        <View style={StyleSheet.absoluteFill} pointerEvents={isFullyClosed ? 'none' : 'auto'}>
             <Animated.View
                 style={[
                     styles.backdrop,
                     { opacity: backdropAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.4] }) },
                 ]}
             >
-                <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+                <TouchableOpacity
+                    style={StyleSheet.absoluteFill}
+                    onPress={onClose}
+                    activeOpacity={1}
+                />
             </Animated.View>
 
             <Animated.View
@@ -144,6 +165,7 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, onClo
                         transform: [{ translateY: slideAnim }],
                         borderColor: colors.cardBorder,
                         borderTopWidth: 1,
+                        zIndex: 10,
                     }
                 ]}
             >
@@ -151,16 +173,22 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, onClo
                     <View style={[styles.handle, { backgroundColor: colors.cardBorder }]} />
                 </View>
 
-                <View style={styles.header}>
+                <View style={[styles.header, { zIndex: 100, elevation: 20 }]}>
                     <Text style={[styles.title, { color: colors.textBright }]}>Map</Text>
-                    <TouchableOpacity
+                    <Pressable
                         onPress={onClose}
-                        style={[styles.closeButton, { backgroundColor: colors.cardBorder }]}
-                        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                        activeOpacity={0.6}
+                        style={({ pressed }) => [
+                            styles.closeButton,
+                            {
+                                backgroundColor: colors.cardBorder,
+                                opacity: pressed ? 0.6 : 1,
+                                transform: [{ scale: pressed ? 0.95 : 1 }]
+                            }
+                        ]}
+                        hitSlop={30}
                     >
-                        <Text style={[styles.closeText, { color: colors.text }]}>✕</Text>
-                    </TouchableOpacity>
+                        <Ionicons name="close" size={26} color={colors.text} />
+                    </Pressable>
                 </View>
 
                 <View style={[styles.mapContainer, { backgroundColor: colors.bg }]}>

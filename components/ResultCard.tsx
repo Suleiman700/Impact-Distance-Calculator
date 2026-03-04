@@ -4,6 +4,7 @@ import { spacing, radius, fonts } from '../theme';
 import { TargetResult } from '../types';
 import { formatDistance } from '../utils/calculateDistance';
 import { useSettings } from '../contexts/SettingsContext';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
     results: TargetResult[];
@@ -96,7 +97,8 @@ export default function ResultCard({ results, onOpenMap, onClear }: Props) {
                                     onPress={() => onOpenMap(r)}
                                     activeOpacity={0.7}
                                 >
-                                    <Text style={[styles.mapButtonText, { color: colors.accent }]}>🗺 Map</Text>
+                                    <Ionicons name="map-outline" size={14} color={colors.accent} style={{ marginRight: 4 }} />
+                                    <Text style={[styles.mapButtonText, { color: colors.accent }]}>Map</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -196,6 +198,8 @@ const styles = StyleSheet.create({
         ...fonts.bold,
     },
     mapButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.xs + 2,
         borderRadius: radius.sm,

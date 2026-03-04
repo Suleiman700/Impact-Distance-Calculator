@@ -12,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, radius, fonts } from '../theme';
 import { useSettings } from '../contexts/SettingsContext';
+import { Ionicons } from '@expo/vector-icons';
 import { calcDistance } from '../utils/calculateDistance';
 import { TargetResult } from '../types';
 import TargetButton from '../components/TargetButton';
@@ -130,7 +131,7 @@ export default function HomeScreen({ navigation }: any) {
                         onPress={() => navigation.navigate('Settings')}
                         activeOpacity={0.7}
                     >
-                        <Text style={styles.settingsIcon}>⚙️</Text>
+                        <Ionicons name="settings-outline" size={24} color={colors.textBright} />
                     </TouchableOpacity>
                 </View>
 
@@ -191,7 +192,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    settingsIcon: { fontSize: 20 },
     scrollView: { flex: 1 },
     scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
     buttonGrid: { marginBottom: spacing.lg },

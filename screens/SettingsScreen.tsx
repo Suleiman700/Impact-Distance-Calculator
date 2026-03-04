@@ -11,6 +11,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, radius, fonts } from '../theme';
 import { useSettings } from '../contexts/SettingsContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen({ navigation }: any) {
     const { settings, updateSettings, colors } = useSettings();
@@ -31,11 +32,15 @@ export default function SettingsScreen({ navigation }: any) {
             <View style={styles.content}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-                        <Text style={[styles.backButton, { color: colors.accent }]}>← Back</Text>
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        activeOpacity={0.7}
+                        style={styles.backButtonContainer}
+                    >
+                        <Ionicons name="arrow-back" size={24} color={colors.accent} />
                     </TouchableOpacity>
                     <Text style={[styles.title, { color: colors.textBright }]}>Settings</Text>
-                    <View style={{ width: 60 }} />
+                    <View style={{ width: 44 }} />
                 </View>
 
                 <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
@@ -182,9 +187,10 @@ const styles = StyleSheet.create({
         paddingTop: spacing.lg,
         paddingBottom: spacing.lg,
     },
-    backButton: {
-        fontSize: 16,
-        ...fonts.medium,
+    backButtonContainer: {
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
     },
     title: {
         fontSize: 20,
