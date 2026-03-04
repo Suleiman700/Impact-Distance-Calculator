@@ -6,10 +6,11 @@ import {
     ScrollView,
     TouchableOpacity,
     StatusBar,
-    SafeAreaView,
 } from 'react-native';
 import * as Location from 'expo-location';
-import { colors, spacing, radius, fonts } from '../theme';
+import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { spacing, radius, fonts } from '../theme';
 import { useSettings } from '../contexts/SettingsContext';
 import { calcDistance } from '../utils/calculateDistance';
 import { TargetResult } from '../types';
@@ -17,31 +18,25 @@ import TargetButton from '../components/TargetButton';
 import ResultCard from '../components/ResultCard';
 import MapDrawer from '../components/MapDrawer';
 
-type TargetState = 'idle' | 'recording' | 'completed';
+type TargetState = 'idle' | 'recording';
 
-interface TargetData {
+interface ButtonStatus {
     state: TargetState;
-    result: TargetResult;
-}
-
-function createInitialTargets(count: number): TargetData[] {
-    return Array.from({ length: count }, (_, i) => ({
-        state: 'idle' as TargetState,
-        result: {
-            index: i,
-            startTime: null,
-            endTime: null,
-            duration: null,
-            distance: null,
-        },
-    }));
+    startTime: number | null;
 }
 
 export default function HomeScreen({ navigation }: any) {
-    const { settings } = useSettings();
-    const [targets, setTargets] = useState<TargetData[]>(
-        createInitialTargets(settings.targetCount)
+    const { settings, colors } = useSettings();
+    const insets = useSafeAreaInsets();
+
+    // Track the status of each button
+    const [buttonStatuses, setButtonStatuses] = useState<ButtonStatus[]>(
+        Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null }))
     );
+
+    // Track all completed measurements
+    const [history, setHistory] = useState<TargetResult[]>([]);
+
     const [userLocation, setUserLocation] = useState<{
         latitude: number;
         longitude: number;
@@ -49,51 +44,69 @@ export default function HomeScreen({ navigation }: any) {
     const [mapVisible, setMapVisible] = useState(false);
     const [mapDistance, setMapDistance] = useState(0);
 
-    // Reset targets when target count changes
+    // Reset when count changes
     useEffect(() => {
-        setTargets(createInitialTargets(settings.targetCount));
+        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null })));
+        setHistory([]);
     }, [settings.targetCount]);
 
-    // Get GPS location
+    // GPS Logic
     useEffect(() => {
         (async () => {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status === 'granted') {
-                const loc = await Location.getCurrentPositionAsync({});
-                setUserLocation({
-                    latitude: loc.coords.latitude,
-                    longitude: loc.coords.longitude,
-                });
+                try {
+                    const last = await Location.getLastKnownPositionAsync({});
+                    if (last) setUserLocation({ latitude: last.coords.latitude, longitude: last.coords.longitude });
+                    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+                } catch (e) {
+                    console.warn('Location error:', e);
+                }
             }
         })();
     }, []);
 
     const handleTargetPress = useCallback((index: number) => {
-        setTargets((prev) => {
+        setButtonStatuses((prev) => {
             const updated = [...prev];
-            const target = { ...updated[index] };
-            const result = { ...target.result };
+            const current = updated[index];
 
-            if (target.state === 'idle') {
-                // First tap: start recording
-                result.startTime = Date.now();
-                target.state = 'recording';
-            } else if (target.state === 'recording') {
-                // Second tap: stop recording & calculate
-                result.endTime = Date.now();
-                result.duration = (result.endTime - (result.startTime || 0)) / 1000;
-                result.distance = calcDistance(result.duration);
-                target.state = 'completed';
+            if (current.state === 'idle') {
+                // START RECORDING
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                updated[index] = { state: 'recording', startTime: Date.now() };
+            } else {
+                // FINISH & SAVE TO HISTORY
+                const endTime = Date.now();
+                const duration = (endTime - (current.startTime || 0)) / 1000;
+                const distance = calcDistance(duration);
+
+                // Add to history list
+                const newResult: TargetResult = {
+                    index, // Button index
+                    startTime: current.startTime,
+                    endTime,
+                    duration,
+                    distance,
+                    timestamp: Date.now(), // Unique time for keys
+                };
+
+                setHistory(prevHistory => [newResult, ...prevHistory]); // Add to top
+
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+                // Reset this specific button to Idle
+                updated[index] = { state: 'idle', startTime: null };
             }
-
-            target.result = result;
-            updated[index] = target;
             return updated;
         });
     }, []);
 
     const handleReset = () => {
-        setTargets(createInitialTargets(settings.targetCount));
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setHistory([]);
+        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null })));
     };
 
     const handleOpenMap = (result: TargetResult) => {
@@ -103,22 +116,17 @@ export default function HomeScreen({ navigation }: any) {
         }
     };
 
-    const completedResults = targets
-        .map((t) => t.result)
-        .filter((r) => r.distance !== null);
-
     return (
-        <SafeAreaView style={styles.safe}>
-            <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-            <View style={styles.container}>
-                {/* Header */}
+        <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
+            <StatusBar barStyle={colors.statusBar} backgroundColor={colors.bg} />
+            <View style={styles.content}>
                 <View style={styles.header}>
                     <View>
-                        <Text style={styles.title}>Impact Distance</Text>
-                        <Text style={styles.subtitle}>Tap on flash, then on sound</Text>
+                        <Text style={[styles.title, { color: colors.textBright }]}>Impact Distance</Text>
+                        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Toggle buttons to log events</Text>
                     </View>
                     <TouchableOpacity
-                        style={styles.settingsButton}
+                        style={[styles.settingsButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
                         onPress={() => navigation.navigate('Settings')}
                         activeOpacity={0.7}
                     >
@@ -126,47 +134,31 @@ export default function HomeScreen({ navigation }: any) {
                     </TouchableOpacity>
                 </View>
 
-                {/* Target Count Badge */}
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                        {settings.targetCount} Target{settings.targetCount > 1 ? 's' : ''}
-                    </Text>
-                </View>
+                <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    {/* Active Buttons */}
+                    <View style={styles.buttonGrid}>
+                        {buttonStatuses.map((btn, i) => (
+                            <TargetButton
+                                key={i}
+                                index={i}
+                                state={btn.state}
+                                duration={null}
+                                startTime={btn.startTime}
+                                onPress={() => handleTargetPress(i)}
+                            />
+                        ))}
+                    </View>
 
-                <ScrollView
-                    style={styles.scrollView}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {/* Target Buttons */}
-                    {targets.map((target, i) => (
-                        <TargetButton
-                            key={i}
-                            index={i}
-                            state={target.state}
-                            duration={target.result.duration}
-                            onPress={() => handleTargetPress(i)}
-                        />
-                    ))}
-
-                    {/* Results */}
-                    <ResultCard results={targets.map((t) => t.result)} onOpenMap={handleOpenMap} />
-
-                    {/* Reset Button */}
-                    {completedResults.length > 0 && (
-                        <TouchableOpacity
-                            style={styles.resetButton}
-                            onPress={handleReset}
-                            activeOpacity={0.7}
-                        >
-                            <Text style={styles.resetText}>↺ Reset All</Text>
-                        </TouchableOpacity>
-                    )}
+                    {/* Measurement History */}
+                    <ResultCard
+                        results={history}
+                        onOpenMap={handleOpenMap}
+                        onClear={handleReset}
+                    />
 
                     <View style={{ height: spacing.xxl }} />
                 </ScrollView>
 
-                {/* Map Drawer */}
                 <MapDrawer
                     visible={mapVisible}
                     userLocation={userLocation}
@@ -174,19 +166,13 @@ export default function HomeScreen({ navigation }: any) {
                     onClose={() => setMapVisible(false)}
                 />
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    safe: {
-        flex: 1,
-        backgroundColor: colors.bg,
-    },
-    container: {
-        flex: 1,
-        backgroundColor: colors.bg,
-    },
+    container: { flex: 1 },
+    content: { flex: 1 },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -195,63 +181,18 @@ const styles = StyleSheet.create({
         paddingTop: spacing.lg,
         paddingBottom: spacing.sm,
     },
-    title: {
-        color: colors.textBright,
-        fontSize: 28,
-        ...fonts.bold,
-    },
-    subtitle: {
-        color: colors.textMuted,
-        fontSize: 14,
-        marginTop: 2,
-    },
+    title: { fontSize: 28, ...fonts.bold },
+    subtitle: { fontSize: 14, marginTop: 2 },
     settingsButton: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: colors.cardBorder,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    settingsIcon: {
-        fontSize: 20,
-    },
-    badge: {
-        alignSelf: 'flex-start',
-        marginLeft: spacing.lg,
-        marginTop: spacing.sm,
-        marginBottom: spacing.md,
-        backgroundColor: colors.accentDim,
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.xs,
-        borderRadius: radius.full,
-    },
-    badgeText: {
-        color: colors.accent,
-        fontSize: 13,
-        ...fonts.semiBold,
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingHorizontal: spacing.lg,
-    },
-    resetButton: {
-        marginTop: spacing.lg,
-        alignSelf: 'center',
-        backgroundColor: colors.card,
-        borderWidth: 1,
-        borderColor: colors.cardBorder,
-        paddingHorizontal: spacing.xl,
-        paddingVertical: spacing.md,
-        borderRadius: radius.lg,
-    },
-    resetText: {
-        color: colors.textMuted,
-        fontSize: 15,
-        ...fonts.medium,
-    },
+    settingsIcon: { fontSize: 20 },
+    scrollView: { flex: 1 },
+    scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+    buttonGrid: { marginBottom: spacing.lg },
 });

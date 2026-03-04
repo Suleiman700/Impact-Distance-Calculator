@@ -5,11 +5,15 @@ const SETTINGS_KEY = '@impact_distance_settings';
 export interface Settings {
     unit: 'km' | 'mile';
     targetCount: number;
+    theme: 'light' | 'dark';
+    showLiveStats: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
     unit: 'km',
     targetCount: 1,
+    theme: 'light',
+    showLiveStats: true,
 };
 
 export async function loadSettings(): Promise<Settings> {

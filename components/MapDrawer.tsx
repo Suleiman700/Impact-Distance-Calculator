@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -6,13 +6,15 @@ import {
     Animated,
     Dimensions,
     TouchableOpacity,
-    Platform,
+    ActivityIndicator,
+    BackHandler,
 } from 'react-native';
-import MapView, { Circle, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { colors, spacing, radius, fonts } from '../theme';
+import { WebView } from 'react-native-webview';
+import { spacing, radius, fonts } from '../theme';
+import { useSettings } from '../contexts/SettingsContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const DRAWER_HEIGHT = SCREEN_HEIGHT * 0.65;
+const DRAWER_HEIGHT = SCREEN_HEIGHT * 0.75;
 
 interface Props {
     visible: boolean;
@@ -22,19 +24,33 @@ interface Props {
 }
 
 export default function MapDrawer({ visible, userLocation, distanceMeters, onClose }: Props) {
+    const { colors, settings } = useSettings();
     const slideAnim = useRef(new Animated.Value(DRAWER_HEIGHT)).current;
     const backdropAnim = useRef(new Animated.Value(0)).current;
-    const [isFullyClosed, setIsFullyClosed] = React.useState(true);
+    const [isFullyClosed, setIsFullyClosed] = useState(true);
 
     useEffect(() => {
+        const backAction = () => {
+            if (visible) {
+                onClose();
+                return true;
+            }
+            return false;
+        };
+
+        const backHandler = BackHandler.addEventListener(
+            'hardwareBackPress',
+            backAction
+        );
+
         if (visible) {
             setIsFullyClosed(false);
             Animated.parallel([
                 Animated.spring(slideAnim, {
                     toValue: 0,
                     useNativeDriver: true,
-                    damping: 20,
-                    stiffness: 200,
+                    damping: 25,
+                    stiffness: 240,
                 }),
                 Animated.timing(backdropAnim, {
                     toValue: 1,
@@ -54,86 +70,120 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, onClo
                     duration: 250,
                     useNativeDriver: true,
                 }),
-            ]).start(() => {
-                setIsFullyClosed(true);
+            ]).start(({ finished }) => {
+                if (finished) setIsFullyClosed(true);
             });
         }
-    }, [visible]);
+
+        return () => backHandler.remove();
+    }, [visible, onClose]);
 
     if (!visible && isFullyClosed) return null;
 
-    // Calculate region to fit the circle
-    const delta = distanceMeters > 0 ? (distanceMeters / 111320) * 2.5 : 0.01;
+    const zoom = distanceMeters > 0 ? (distanceMeters > 5000 ? 11 : 13) : 15;
+
+    // Generate the HTML for Leaflet
+    const leafletHtml = userLocation ? `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          body { margin: 0; padding: 0; }
+          #map { height: 100vh; width: 100vw; background: ${colors.bg}; }
+          .leaflet-tile { 
+            filter: ${settings.theme === 'dark' ? 'invert(100%) hue-rotate(180deg) brightness(85%) contrast(85%)' : 'none'}; 
+          }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          const map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false
+          }).setView([${userLocation.latitude}, ${userLocation.longitude}], ${zoom});
+
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+          // Add Marker
+          L.marker([${userLocation.latitude}, ${userLocation.longitude}]).addTo(map);
+
+          // Add Circle if distance > 0
+          if (${distanceMeters} > 0) {
+            L.circle([${userLocation.latitude}, ${userLocation.longitude}], {
+              color: '${colors.accent}',
+              fillColor: '${colors.accent}',
+              fillOpacity: 0.2,
+              radius: ${distanceMeters}
+            }).addTo(map);
+          }
+        </script>
+      </body>
+    </html>
+    ` : '';
 
     return (
         <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
-            {/* Backdrop */}
             <Animated.View
                 style={[
                     styles.backdrop,
-                    { opacity: backdropAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }) },
+                    { opacity: backdropAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.4] }) },
                 ]}
             >
                 <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
             </Animated.View>
 
-            {/* Drawer */}
             <Animated.View
-                style={[styles.drawer, { transform: [{ translateY: slideAnim }] }]}
+                style={[
+                    styles.drawer,
+                    {
+                        backgroundColor: colors.card,
+                        transform: [{ translateY: slideAnim }],
+                        borderColor: colors.cardBorder,
+                        borderTopWidth: 1,
+                    }
+                ]}
             >
-                {/* Handle */}
                 <View style={styles.handleContainer}>
-                    <View style={styles.handle} />
+                    <View style={[styles.handle, { backgroundColor: colors.cardBorder }]} />
                 </View>
 
-                {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>Impact Radius</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Text style={styles.closeText}>✕</Text>
+                    <Text style={[styles.title, { color: colors.textBright }]}>Map</Text>
+                    <TouchableOpacity
+                        onPress={onClose}
+                        style={[styles.closeButton, { backgroundColor: colors.cardBorder }]}
+                        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                        activeOpacity={0.6}
+                    >
+                        <Text style={[styles.closeText, { color: colors.text }]}>✕</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Map */}
-                {userLocation ? (
-                    <MapView
-                        style={styles.map}
-                        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-                        initialRegion={{
-                            ...userLocation,
-                            latitudeDelta: delta,
-                            longitudeDelta: delta,
-                        }}
-                        customMapStyle={darkMapStyle}
-                    >
-                        <Marker coordinate={userLocation} title="Your Location" />
-                        {distanceMeters > 0 && (
-                            <Circle
-                                center={userLocation}
-                                radius={distanceMeters}
-                                strokeColor={colors.accent}
-                                fillColor={colors.accentDim}
-                                strokeWidth={2}
-                            />
-                        )}
-                    </MapView>
-                ) : (
-                    <View style={styles.noLocation}>
-                        <Text style={styles.noLocationText}>Waiting for GPS location…</Text>
-                    </View>
-                )}
+                <View style={[styles.mapContainer, { backgroundColor: colors.bg }]}>
+                    {userLocation ? (
+                        <WebView
+                            originWhitelist={['*']}
+                            source={{ html: leafletHtml }}
+                            style={styles.map}
+                            scrollEnabled={true}
+                        />
+                    ) : (
+                        <View style={styles.noLocation}>
+                            <ActivityIndicator size="small" color={colors.accent} style={{ marginBottom: spacing.md }} />
+                            <Text style={[styles.noLocationText, { color: colors.textMuted }]}>
+                                Determining proximity coordinates...
+                            </Text>
+                        </View>
+                    )}
+                </View>
             </Animated.View>
         </View>
     );
 }
-
-const darkMapStyle = [
-    { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#8ec3b9' }] },
-    { elementType: 'labels.text.stroke', stylers: [{ color: '#1a3646' }] },
-    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#304a7d' }] },
-    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1626' }] },
-];
 
 const styles = StyleSheet.create({
     backdrop: {
@@ -146,7 +196,6 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: DRAWER_HEIGHT,
-        backgroundColor: colors.card,
         borderTopLeftRadius: radius.xl,
         borderTopRightRadius: radius.xl,
         overflow: 'hidden',
@@ -156,47 +205,45 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.sm,
     },
     handle: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: colors.textMuted,
+        width: 42,
+        height: 6,
+        borderRadius: 3,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: spacing.lg,
-        paddingBottom: spacing.sm,
+        paddingBottom: spacing.md,
     },
     title: {
-        color: colors.textBright,
-        fontSize: 18,
+        fontSize: 20,
         ...fonts.bold,
     },
     closeButton: {
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: colors.cardBorder,
         justifyContent: 'center',
         alignItems: 'center',
     },
     closeText: {
-        color: colors.text,
         fontSize: 16,
+    },
+    mapContainer: {
+        flex: 1,
     },
     map: {
         flex: 1,
-        borderTopWidth: 1,
-        borderTopColor: colors.cardBorder,
     },
     noLocation: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        padding: spacing.xl,
     },
     noLocationText: {
-        color: colors.textMuted,
         fontSize: 16,
+        textAlign: 'center',
     },
 });

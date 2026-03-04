@@ -4,132 +4,203 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
+    ScrollView,
 } from 'react-native';
-import { colors, spacing, radius, fonts } from '../theme';
+import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { spacing, radius, fonts } from '../theme';
 import { useSettings } from '../contexts/SettingsContext';
 
 export default function SettingsScreen({ navigation }: any) {
-    const { settings, updateSettings } = useSettings();
+    const { settings, updateSettings, colors } = useSettings();
+    const insets = useSafeAreaInsets();
 
     const units: Array<'km' | 'mile'> = ['km', 'mile'];
+    const themes: Array<'light' | 'dark'> = ['light', 'dark'];
     const targetOptions = [1, 2, 3, 4, 5];
 
+    const handleUpdate = (partial: Partial<typeof settings>) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        updateSettings(partial);
+    };
+
     return (
-        <SafeAreaView style={styles.safe}>
-            <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-            <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
+            <StatusBar barStyle={colors.statusBar} backgroundColor={colors.bg} />
+            <View style={styles.content}>
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-                        <Text style={styles.backButton}>← Back</Text>
+                        <Text style={[styles.backButton, { color: colors.accent }]}>← Back</Text>
                     </TouchableOpacity>
-                    <Text style={styles.title}>Settings</Text>
+                    <Text style={[styles.title, { color: colors.textBright }]}>Settings</Text>
                     <View style={{ width: 60 }} />
                 </View>
 
-                {/* Unit Toggle */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Distance Unit</Text>
-                    <View style={styles.segmented}>
-                        {units.map((u) => (
-                            <TouchableOpacity
-                                key={u}
-                                style={[
-                                    styles.segment,
-                                    settings.unit === u && styles.segmentActive,
-                                ]}
-                                onPress={() => updateSettings({ unit: u })}
-                                activeOpacity={0.7}
-                            >
-                                <Text
+                <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+                    {/* Theme Toggle */}
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
+                        <View style={[styles.segmented, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                            {themes.map((t) => (
+                                <TouchableOpacity
+                                    key={t}
                                     style={[
-                                        styles.segmentText,
-                                        settings.unit === u && styles.segmentTextActive,
+                                        styles.segment,
+                                        settings.theme === t && { backgroundColor: colors.accent },
                                     ]}
+                                    onPress={() => handleUpdate({ theme: t })}
+                                    activeOpacity={0.7}
                                 >
-                                    {u === 'km' ? 'Kilometers' : 'Miles'}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                                    <Text
+                                        style={[
+                                            styles.segmentText,
+                                            { color: colors.textMuted },
+                                            settings.theme === t && { color: '#FFF', ...fonts.semiBold },
+                                        ]}
+                                    >
+                                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
-                </View>
 
-                {/* Target Count Stepper */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Number of Targets</Text>
-                    <View style={styles.stepper}>
-                        {targetOptions.map((n) => (
-                            <TouchableOpacity
-                                key={n}
-                                style={[
-                                    styles.stepperButton,
-                                    settings.targetCount === n && styles.stepperButtonActive,
-                                ]}
-                                onPress={() => updateSettings({ targetCount: n })}
-                                activeOpacity={0.7}
-                            >
-                                <Text
+                    {/* Unit Toggle */}
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Distance Unit</Text>
+                        <View style={[styles.segmented, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                            {units.map((u) => (
+                                <TouchableOpacity
+                                    key={u}
                                     style={[
-                                        styles.stepperText,
-                                        settings.targetCount === n && styles.stepperTextActive,
+                                        styles.segment,
+                                        settings.unit === u && { backgroundColor: colors.accent },
                                     ]}
+                                    onPress={() => handleUpdate({ unit: u })}
+                                    activeOpacity={0.7}
                                 >
-                                    {n}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                                    <Text
+                                        style={[
+                                            styles.segmentText,
+                                            { color: colors.textMuted },
+                                            settings.unit === u && { color: '#FFF', ...fonts.semiBold },
+                                        ]}
+                                    >
+                                        {u === 'km' ? 'Kilometers' : 'Miles'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
-                </View>
 
-                {/* Info */}
-                <View style={styles.infoCard}>
-                    <Text style={styles.infoTitle}>How it works</Text>
-                    <Text style={styles.infoText}>
-                        1. Tap a target button when you see a flash{'\n'}
-                        2. Tap again when you hear the sound{'\n'}
-                        3. Distance is calculated using speed of sound (343 m/s){'\n'}
-                        4. View the estimated impact radius on the map
-                    </Text>
-                </View>
+                    {/* Target Count Stepper */}
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Number of Targets</Text>
+                        <View style={styles.stepper}>
+                            {targetOptions.map((n) => (
+                                <TouchableOpacity
+                                    key={n}
+                                    style={[
+                                        styles.stepperButton,
+                                        { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                                        settings.targetCount === n && { backgroundColor: colors.accent, borderColor: colors.accent },
+                                    ]}
+                                    onPress={() => handleUpdate({ targetCount: n })}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.stepperText,
+                                            { color: colors.textMuted },
+                                            settings.targetCount === n && { color: '#FFF' },
+                                        ]}
+                                    >
+                                        {n}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Live Stats Toggle */}
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Real-time Updates</Text>
+                        <TouchableOpacity
+                            style={[
+                                styles.toggleContainer,
+                                { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                            ]}
+                            onPress={() => handleUpdate({ showLiveStats: !settings.showLiveStats })}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[styles.toggleLabel, { color: colors.text }]}>
+                                Show Timer & Distance on Buttons
+                            </Text>
+                            <View style={[
+                                styles.toggleSwitch,
+                                { backgroundColor: settings.showLiveStats ? colors.accent : colors.cardBorder }
+                            ]}>
+                                <View style={[
+                                    styles.toggleKnob,
+                                    { transform: [{ translateX: settings.showLiveStats ? 20 : 0 }] }
+                                ]} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Info */}
+                    <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                        <Text style={[styles.infoTitle, { color: colors.textBright }]}>How it works</Text>
+                        <Text style={[styles.infoText, { color: colors.textMuted }]}>
+                            1. Tap a target button when you see a flash{'\n'}
+                            2. Tap again when you hear the sound{'\n'}
+                            3. The app calculates the time difference{'\n'}
+                            4. Distance is calculated using speed of sound (343 m/s){'\n'}
+                            5. View the estimated distance on the map
+                        </Text>
+                    </View>
+                </ScrollView>
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    safe: {
-        flex: 1,
-        backgroundColor: colors.bg,
-    },
     container: {
         flex: 1,
-        backgroundColor: colors.bg,
-        paddingHorizontal: spacing.lg,
+    },
+    content: {
+        flex: 1,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        paddingHorizontal: spacing.lg,
         paddingTop: spacing.lg,
         paddingBottom: spacing.lg,
     },
     backButton: {
-        color: colors.accent,
         fontSize: 16,
         ...fonts.medium,
     },
     title: {
-        color: colors.textBright,
         fontSize: 20,
         ...fonts.bold,
+    },
+    scroll: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingHorizontal: spacing.lg,
+        paddingBottom: spacing.xl,
     },
     section: {
         marginBottom: spacing.xl,
     },
     sectionTitle: {
-        color: colors.text,
         fontSize: 14,
         ...fonts.medium,
         marginBottom: spacing.sm,
@@ -138,11 +209,9 @@ const styles = StyleSheet.create({
     },
     segmented: {
         flexDirection: 'row',
-        backgroundColor: colors.card,
         borderRadius: radius.md,
         padding: 4,
         borderWidth: 1,
-        borderColor: colors.cardBorder,
     },
     segment: {
         flex: 1,
@@ -150,17 +219,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: radius.sm,
     },
-    segmentActive: {
-        backgroundColor: colors.accent,
-    },
     segmentText: {
-        color: colors.textMuted,
         fontSize: 15,
         ...fonts.medium,
-    },
-    segmentTextActive: {
-        color: colors.textBright,
-        ...fonts.semiBold,
     },
     stepper: {
         flexDirection: 'row',
@@ -170,40 +231,50 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: spacing.md,
         alignItems: 'center',
-        backgroundColor: colors.card,
         borderRadius: radius.md,
         borderWidth: 1,
-        borderColor: colors.cardBorder,
-    },
-    stepperButtonActive: {
-        backgroundColor: colors.accent,
-        borderColor: colors.accent,
     },
     stepperText: {
-        color: colors.textMuted,
         fontSize: 18,
         ...fonts.bold,
     },
-    stepperTextActive: {
-        color: colors.textBright,
-    },
     infoCard: {
-        backgroundColor: colors.card,
         borderRadius: radius.lg,
         borderWidth: 1,
-        borderColor: colors.cardBorder,
         padding: spacing.lg,
         marginTop: spacing.lg,
     },
     infoTitle: {
-        color: colors.textBright,
         fontSize: 16,
         ...fonts.semiBold,
         marginBottom: spacing.sm,
     },
     infoText: {
-        color: colors.textMuted,
         fontSize: 14,
         lineHeight: 22,
+    },
+    toggleContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: spacing.md,
+        borderRadius: radius.md,
+        borderWidth: 1,
+    },
+    toggleLabel: {
+        fontSize: 15,
+        ...fonts.medium,
+    },
+    toggleSwitch: {
+        width: 44,
+        height: 24,
+        borderRadius: 12,
+        padding: 2,
+    },
+    toggleKnob: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#fff',
     },
 });

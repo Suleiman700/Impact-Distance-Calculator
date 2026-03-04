@@ -4,4 +4,5 @@ export interface TargetResult {
     endTime: number | null;
     duration: number | null;
     distance: number | null;
+    timestamp?: number;
 }

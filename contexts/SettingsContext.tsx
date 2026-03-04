@@ -1,20 +1,23 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Settings, loadSettings, saveSettings } from '../storage/settings';
+import { ThemeColors, lightColors, darkColors } from '../theme';
 
 interface SettingsContextType {
     settings: Settings;
     updateSettings: (partial: Partial<Settings>) => void;
     isLoaded: boolean;
+    colors: ThemeColors;
 }
 
 const SettingsContext = createContext<SettingsContextType>({
-    settings: { unit: 'km', targetCount: 1 },
+    settings: { unit: 'km', targetCount: 1, theme: 'light', showLiveStats: true },
     updateSettings: () => { },
     isLoaded: false,
+    colors: lightColors,
 });
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-    const [settings, setSettings] = useState<Settings>({ unit: 'km', targetCount: 1 });
+    const [settings, setSettings] = useState<Settings>({ unit: 'km', targetCount: 1, theme: 'light', showLiveStats: true });
     const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
@@ -32,8 +35,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         });
     };
 
+    const colors = settings.theme === 'dark' ? darkColors : lightColors;
+
     return (
-        <SettingsContext.Provider value={{ settings, updateSettings, isLoaded }}>
+        <SettingsContext.Provider value={{ settings, updateSettings, isLoaded, colors }}>
             {children}
         </SettingsContext.Provider>
     );
