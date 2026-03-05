@@ -6,16 +6,18 @@ import { TargetResult } from '../types';
 import { formatDistance } from '../utils/calculateDistance';
 import { useSettings } from '../contexts/SettingsContext';
 import { Ionicons } from '@expo/vector-icons';
+import ShareSummaryCard from './ShareSummaryCard';
 
 interface Props {
     results: TargetResult[];
+    activeSession: any;
     onOpenMap: (result: TargetResult) => void;
     onOpenGlobalMap: () => void;
     onClear: () => void;
     onDelete: (timestamp: number) => void;
 }
 
-export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClear, onDelete }: Props) {
+export default function ResultCard({ results, activeSession, onOpenMap, onOpenGlobalMap, onClear, onDelete }: Props) {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const { settings, colors } = useSettings();
 
@@ -44,21 +46,21 @@ export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClea
         >
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
-                    <Text style={[styles.title, { color: colors.textBright }]}>History</Text>
+                    <Text style={[styles.title, { color: colors.textBright }]}>Recent</Text>
                     <View style={[styles.countBadge, { backgroundColor: colors.accentDim }]}>
                         <Text style={[styles.countText, { color: colors.accent }]}>{results.length}</Text>
                     </View>
                 </View>
 
                 <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
+                    <ShareSummaryCard results={results} activeSession={activeSession} />
+
                     <TouchableOpacity
                         onPress={onOpenGlobalMap}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         activeOpacity={0.6}
-                        style={{ flexDirection: 'row', alignItems: 'center' }}
                     >
-                        <Ionicons name="map-outline" size={16} color={colors.accent} style={{ marginRight: 4 }} />
-                        <Text style={[styles.clearText, { color: colors.accent }]}>All</Text>
+                        <Ionicons name="map-outline" size={18} color={colors.accent} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -66,7 +68,7 @@ export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClea
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         activeOpacity={0.6}
                     >
-                        <Text style={[styles.clearText, { color: colors.textMuted }]}>Clear all</Text>
+                        <Ionicons name="trash-outline" size={18} color={colors.accent} />
                     </TouchableOpacity>
                 </View>
             </View>

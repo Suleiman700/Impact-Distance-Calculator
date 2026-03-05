@@ -5,6 +5,7 @@ import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import HomeScreen from './screens/HomeScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import IntroScreen from './screens/IntroScreen';
+import HistoryScreen from './screens/HistoryScreen';
 
 const Stack = createStackNavigator();
 
@@ -38,9 +39,12 @@ function AppContent() {
         <Stack.Screen
           name="Settings"
           component={SettingsScreen}
-          options={{
-            presentation: 'modal',
-          }}
+          options={{ presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="History"
+          component={HistoryScreen}
+          options={{ presentation: 'card' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -16,7 +16,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { Ionicons } from '@expo/vector-icons';
 import { TargetResult } from '../types';
 
-import { LEAFLET_CSS, LEAFLET_JS, MARKER_ICON, MARKER_ICON_2X, MARKER_SHADOW } from '../assets/leaflet/leafletSource';
+import { LEAFLET_CSS, LEAFLET_JS, MARKER_ICON, MARKER_ICON_2X, MARKER_SHADOW, LEAFLET_HEAT_JS } from '../assets/leaflet/leafletSource';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DRAWER_HEIGHT = SCREEN_HEIGHT * 0.75;
@@ -33,6 +33,7 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
     const slideAnim = useRef(new Animated.Value(DRAWER_HEIGHT)).current;
     const backdropAnim = useRef(new Animated.Value(0)).current;
     const [isFullyClosed, setIsFullyClosed] = useState(true);
+    const [showHeatmap, setShowHeatmap] = useState(false);
 
     useEffect(() => {
         const backAction = () => {
@@ -104,6 +105,7 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
         <div id="map"></div>
         <script>
           ${LEAFLET_JS}
+          ${LEAFLET_HEAT_JS}
           
           // Configure icons for offline use
           const DefaultIcon = L.icon({
@@ -125,9 +127,11 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
           // Add Marker for user
-          L.marker([${userLocation.latitude}, ${userLocation.longitude}]).addTo(map).bindPopup("Your Location");
+          const userMarker = L.marker([${userLocation.latitude}, ${userLocation.longitude}]).bindPopup("Your Location");
+          ${!showHeatmap ? 'userMarker.addTo(map);' : ''}
 
-          const allMarkers = [L.marker([${userLocation.latitude}, ${userLocation.longitude}])];
+          const allMarkers = [userMarker];
+          const heatData = [];
 
           // Add Targets
           ${history.map((r) => {
@@ -159,11 +163,12 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
                           const fLon = lon2 * 180 / Math.PI;
                           
                           // Draw the projected 2D Ground Line
-                          L.polyline([[originLat, originLon], [fLat, fLon]], { 
+                          const line = L.polyline([[originLat, originLon], [fLat, fLon]], { 
                               color: '${colors.danger}', 
                               weight: 1, 
                               opacity: 0.6 
-                          }).addTo(map);
+                          });
+                          ${!showHeatmap ? 'line.addTo(map);' : ''}
 
                           const tgtIcon = L.divIcon({
                               html: '<div style="width: 16px; height: 16px; transform: rotate(${heading}deg); transform-origin: center center; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="${colors.danger}" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 0px 1px rgba(0,0,0,0.5));"><path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"/></svg></div>',
@@ -177,8 +182,10 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
                                       "Heading: ${Math.round(heading)}°";
                           if (tiltVal !== 0) popupDesc += " • Tilt: " + Math.round(tiltVal) + "°";
 
-                          const m = L.marker([fLat, fLon], { icon: tgtIcon }).addTo(map).bindPopup(popupDesc);
+                          const m = L.marker([fLat, fLon], { icon: tgtIcon }).bindPopup(popupDesc);
+                          ${!showHeatmap ? 'm.addTo(map);' : ''}
                           allMarkers.push(m);
+                          heatData.push([fLat, fLon, 1]);
                       })();
                   `;
         } else {
@@ -199,12 +206,20 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
                               fillOpacity: 0.1,
                               weight: 2,
                               radius: groundDist
-                          }).addTo(map).bindPopup("Target ${r.index + 1}: ${r.distance.toFixed(0)}m (Ground: " + Math.round(groundDist) + "m)");
+                          }).bindPopup("Target ${r.index + 1}: ${r.distance.toFixed(0)}m (Ground: " + Math.round(groundDist) + "m)");
+                          ${!showHeatmap ? 'c.addTo(map);' : ''}
                           allMarkers.push(c);
+                          heatData.push([originLat, originLon, 1]);
                       })();
                   `;
         }
     }).join('\n')}
+
+    ${showHeatmap ? `
+        if (heatData.length > 0) {
+            L.heatLayer(heatData, { radius: 35, blur: 25, maxZoom: 17, max: 1.0 }).addTo(map);
+        }
+    ` : ''}
 
 if (allMarkers.length > 1) {
     const group = new L.featureGroup(allMarkers);
@@ -251,20 +266,37 @@ if (allMarkers.length > 1) {
 
                 <View style={[styles.header, { zIndex: 100, elevation: 20 }]}>
                     <Text style={[styles.title, { color: colors.textBright }]}>All Targets Map</Text>
-                    <Pressable
-                        onPress={onClose}
-                        style={({ pressed }) => [
-                            styles.closeButton,
-                            {
-                                backgroundColor: colors.cardBorder,
-                                opacity: pressed ? 0.6 : 1,
-                                transform: [{ scale: pressed ? 0.95 : 1 }]
-                            }
-                        ]}
-                        hitSlop={30}
-                    >
-                        <Ionicons name="close" size={26} color={colors.text} />
-                    </Pressable>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Pressable
+                            onPress={() => setShowHeatmap(!showHeatmap)}
+                            style={({ pressed }) => [
+                                styles.closeButton,
+                                {
+                                    backgroundColor: showHeatmap ? colors.danger + '33' : colors.cardBorder,
+                                    marginRight: spacing.sm,
+                                    opacity: pressed ? 0.6 : 1,
+                                    transform: [{ scale: pressed ? 0.95 : 1 }]
+                                }
+                            ]}
+                            hitSlop={15}
+                        >
+                            <Ionicons name="flame" size={18} color={showHeatmap ? colors.danger : colors.text} />
+                        </Pressable>
+                        <Pressable
+                            onPress={onClose}
+                            style={({ pressed }) => [
+                                styles.closeButton,
+                                {
+                                    backgroundColor: colors.cardBorder,
+                                    opacity: pressed ? 0.6 : 1,
+                                    transform: [{ scale: pressed ? 0.95 : 1 }]
+                                }
+                            ]}
+                            hitSlop={15}
+                        >
+                            <Ionicons name="close" size={20} color={colors.text} />
+                        </Pressable>
+                    </View>
                 </View>
 
                 <View style={[styles.mapContainer, { backgroundColor: colors.bg }]}>

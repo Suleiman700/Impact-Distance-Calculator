@@ -14,9 +14,10 @@ import Animated, {
     useSharedValue,
     interpolate,
     useAnimatedScrollHandler,
+    SharedValue,
 } from 'react-native-reanimated';
 import { useSettings } from '../contexts/SettingsContext';
-import { spacing, radius, fonts } from '../theme';
+import { spacing, radius, fonts, ThemeColors } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
@@ -53,7 +54,7 @@ const slides: Slide[] = [
     },
 ];
 
-const SlideItem = ({ item, index, scrollX, colors }: { item: Slide; index: number; scrollX: Animated.SharedValue<number>; colors: any }) => {
+const SlideItem = ({ item, index, scrollX, colors }: { item: Slide; index: number; scrollX: SharedValue<number>; colors: ThemeColors }) => {
     const animatedStyle = useAnimatedStyle(() => {
         const opacity = interpolate(
             scrollX.value,
@@ -86,7 +87,7 @@ const SlideItem = ({ item, index, scrollX, colors }: { item: Slide; index: numbe
     );
 };
 
-const PaginationDot = ({ index, scrollX, colors }: { index: number; scrollX: Animated.SharedValue<number>; colors: any }) => {
+const PaginationDot = ({ index, scrollX, colors }: { index: number; scrollX: SharedValue<number>; colors: ThemeColors }) => {
     const animatedStyle = useAnimatedStyle(() => {
         const dotWidth = interpolate(
             scrollX.value,

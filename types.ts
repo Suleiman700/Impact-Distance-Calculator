@@ -9,4 +9,12 @@ export interface TargetResult {
     timestamp: number;
     latitude?: number | null;
     longitude?: number | null;
+    sessionId?: string; // Which session this result belongs to
+}
+
+export interface Session {
+    id: string;
+    name: string;
+    createdAt: number;
+    endedAt?: number | null;
 }

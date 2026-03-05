@@ -90,8 +90,8 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, headi
     // const zoom = distanceMeters > 0 ? (distanceMeters > 5000 ? 11 : 13) : 15;
 
 
-    function getZoomFromDistance(distnace) {
-        const zoom = 16 - Math.log2(distnace / 200);
+    function getZoomFromDistance(distance: number) {
+        const zoom = 16 - Math.log2(distance / 200);
         return Math.max(1, Math.min(20, zoom)); // clamp zoom between 1–20
     }
 

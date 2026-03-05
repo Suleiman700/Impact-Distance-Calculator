@@ -308,61 +308,36 @@ export default function SettingsScreen({ navigation }: any) {
                         </TouchableOpacity>
                     </View>
 
-
-                    {/* Data Management Section */}
+                    {/* Keep Screen On */}
                     <View style={styles.section}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Data Management</Text>
-                        <View style={{ gap: spacing.md }}>
-                            <TouchableOpacity
-                                style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-                                onPress={async () => {
-                                    const h = await loadHistory();
-                                    if (h.length === 0) {
-                                        Alert.alert("Empty", "No data to export.");
-                                        return;
-                                    }
-                                    try {
-                                        await Share.share({
-                                            message: JSON.stringify(h, null, 2),
-                                            title: 'Impact Data Export'
-                                        });
-                                    } catch (e) {
-                                        console.error(e);
-                                    }
-                                }}
-                                activeOpacity={0.7}
-                            >
-                                <Ionicons name="download-outline" size={20} color={colors.accent} />
-                                <Text style={[styles.toggleLabel, { color: colors.text }]}>Export Tracking History (JSON)</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.danger + '44' }]}
-                                onPress={() => {
-                                    Alert.alert(
-                                        "Wipe All Data?",
-                                        "Are you sure you want to permanently delete all tracking history? This cannot be undone.",
-                                        [
-                                            { text: "Cancel", style: "cancel" },
-                                            {
-                                                text: "Delete All",
-                                                style: "destructive",
-                                                onPress: async () => {
-                                                    await clearHistory();
-                                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                                    Alert.alert("Deleted", "All history has been wiped.");
-                                                }
-                                            }
-                                        ]
-                                    );
-                                }}
-                                activeOpacity={0.7}
-                            >
-                                <Ionicons name="trash-outline" size={20} color={colors.danger} />
-                                <Text style={[styles.toggleLabel, { color: colors.danger, ...fonts.semiBold }]}>Wipe All Records</Text>
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity
+                            style={[
+                                styles.toggleContainer,
+                                { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                            ]}
+                            onPress={() => handleUpdate({ keepScreenOn: !settings.keepScreenOn })}
+                            activeOpacity={0.7}
+                        >
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.toggleLabel, { color: colors.text }]}>
+                                    Keep Screen On
+                                </Text>
+                                <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                                    Prevents the screen from locking during field use
+                                </Text>
+                            </View>
+                            <View style={[
+                                styles.toggleSwitch,
+                                { backgroundColor: settings.keepScreenOn ? colors.accent : colors.cardBorder }
+                            ]}>
+                                <View style={[
+                                    styles.toggleKnob,
+                                    { transform: [{ translateX: settings.keepScreenOn ? 20 : 0 }] }
+                                ]} />
+                            </View>
+                        </TouchableOpacity>
                     </View>
+
 
                     {/* Info */}
                     <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>

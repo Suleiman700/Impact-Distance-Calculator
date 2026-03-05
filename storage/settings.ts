@@ -13,6 +13,7 @@ export interface Settings {
     directionMode: 'off' | 'sensor';
     tiltEnabled: boolean; // 3D tilt tracking
     buttonPosition: 'top' | 'bottom';
+    keepScreenOn: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -26,6 +27,7 @@ const DEFAULT_SETTINGS: Settings = {
     directionMode: 'off',
     tiltEnabled: false,
     buttonPosition: 'bottom',
+    keepScreenOn: true,
 };
 
 export async function loadSettings(): Promise<Settings> {

@@ -3,10 +3,8 @@ import {
     View,
     Text,
     StyleSheet,
-    ScrollView,
     TouchableOpacity,
     StatusBar,
-    Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { DeviceMotion } from 'expo-sensors';
@@ -22,6 +20,9 @@ import ResultCard from '../components/ResultCard';
 import MapDrawer from '../components/MapDrawer';
 import GlobalHistoryMap from '../components/GlobalHistoryMap';
 import { useHistory } from '../contexts/HistoryContext';
+import { useKeepAwake } from 'expo-keep-awake';
+import MissionModal from '../components/MissionModal';
+import MenuDropdown from '../components/MenuDropdown';
 
 type TargetState = 'idle' | 'recording';
 
@@ -35,13 +36,17 @@ interface ButtonStatus {
 export default function HomeScreen({ navigation }: any) {
     const { settings, colors } = useSettings();
     const insets = useSafeAreaInsets();
+    useKeepAwake(settings.keepScreenOn ? 'field-mode' : undefined);
 
     // Track the status of each button
     const [buttonStatuses, setButtonStatuses] = useState<ButtonStatus[]>(
         Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null }))
     );
 
-    const { history, addResult, deleteResult, clearHistory } = useHistory();
+    const { history, addResult, deleteResult, clearHistory, activeSession, startSession, endSession } = useHistory();
+
+    const [displayClearedAt, setDisplayClearedAt] = useState(0);
+    const recentHistory = history.filter(h => (h.timestamp || 0) > displayClearedAt);
 
     const [userLocation, setUserLocation] = useState<{
         latitude: number;
@@ -51,6 +56,7 @@ export default function HomeScreen({ navigation }: any) {
     const [mapDistance, setMapDistance] = useState(0);
     const [mapResult, setMapResult] = useState<TargetResult | null>(null); // Track the full result being viewed
     const [globalMapVisible, setGlobalMapVisible] = useState(false);
+    const [missionModalVisible, setMissionModalVisible] = useState(false);
     const [heading, setHeading] = useState<number | null>(null);
     const [tilt, setTilt] = useState<number | null>(null);
 
@@ -172,9 +178,10 @@ export default function HomeScreen({ navigation }: any) {
         }
     }, [buttonStatuses, heading, tilt, userLocation, addResult]);
 
-    const handleReset = async () => {
+    const handleClearRecent = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        clearHistory();
+        // Instead of clearHistory() (which deletes from DB), we just update the local filter
+        setDisplayClearedAt(Date.now());
         setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null })));
     };
 
@@ -191,13 +198,13 @@ export default function HomeScreen({ navigation }: any) {
             <StatusBar barStyle={colors.statusBar} backgroundColor={colors.bg} />
             <View style={styles.content}>
                 <View style={styles.header}>
-                    <View>
+                    <View style={{ flex: 1 }}>
                         <Text style={[styles.title, { color: colors.textBright }]}>Impact Distance</Text>
                         <View style={styles.statusRow}>
                             <Ionicons
                                 name={settings.locationMode === 'gps' ? "location" : "map"}
                                 size={12}
-                            // color={userLocation ? colors.success : colors.danger}
+                                color={colors.textMuted}
                             />
                             <Text style={[styles.subtitle, { color: colors.textMuted }]}>
                                 {settings.locationMode === 'gps' ? 'GPS Active' : 'Manual Position'}
@@ -205,14 +212,36 @@ export default function HomeScreen({ navigation }: any) {
                                 {tilt !== null && settings.tiltEnabled && ` (Tilt: ${tilt.toFixed(0)}°)`}
                             </Text>
                         </View>
+
+                        {/* Mission Status */}
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, gap: spacing.xs }}
+                            onPress={() => setMissionModalVisible(true)}
+                        >
+                            <View style={[styles.missionBadge, { backgroundColor: activeSession ? colors.danger + '22' : colors.card, borderColor: activeSession ? colors.danger : colors.cardBorder }]}>
+                                <View style={[styles.missionDot, { backgroundColor: activeSession ? colors.danger : colors.textMuted }]} />
+                                <Text style={[styles.missionText, { color: activeSession ? colors.danger : colors.textMuted }]}>
+                                    {activeSession ? `Mission: ${activeSession.name}` : "Start New Mission"}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        style={[styles.settingsButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-                        onPress={() => navigation.navigate('Settings')}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="settings-outline" size={24} color={colors.textBright} />
-                    </TouchableOpacity>
+                    <MenuDropdown
+                        items={[
+                            {
+                                id: 'history',
+                                label: 'History',
+                                icon: 'time-outline',
+                                onPress: () => navigation.navigate('History'),
+                            },
+                            {
+                                id: 'settings',
+                                label: 'Settings',
+                                icon: 'settings-outline',
+                                onPress: () => navigation.navigate('Settings'),
+                            },
+                        ]}
+                    />
                 </View>
 
                 {/* Top Buttons (Standard Layout) - natural height */}
@@ -234,10 +263,11 @@ export default function HomeScreen({ navigation }: any) {
                 {/* History fills all remaining space with its own internal scroll */}
                 <View style={styles.historyArea}>
                     <ResultCard
-                        results={history}
+                        results={recentHistory}
+                        activeSession={activeSession}
                         onOpenMap={handleOpenMap}
                         onOpenGlobalMap={() => setGlobalMapVisible(true)}
-                        onClear={handleReset}
+                        onClear={handleClearRecent}
                         onDelete={deleteResult}
                     />
                 </View>
@@ -278,6 +308,17 @@ export default function HomeScreen({ navigation }: any) {
                     history={history}
                     onClose={() => setGlobalMapVisible(false)}
                 />
+
+                <MissionModal
+                    visible={missionModalVisible}
+                    activeSession={activeSession}
+                    onStart={(name) => {
+                        setDisplayClearedAt(Date.now());
+                        startSession(name);
+                    }}
+                    onEnd={endSession}
+                    onClose={() => setMissionModalVisible(false)}
+                />
             </View>
         </View>
     );
@@ -297,6 +338,24 @@ const styles = StyleSheet.create({
     title: { fontSize: 28, ...fonts.bold },
     statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
     subtitle: { fontSize: 13 },
+    missionBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 4,
+        borderRadius: radius.sm,
+        borderWidth: 1,
+    },
+    missionDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        marginRight: 6,
+    },
+    missionText: {
+        fontSize: 12,
+        ...fonts.medium,
+    },
     settingsButton: {
         width: 44,
         height: 44,
