@@ -117,6 +117,23 @@ export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClea
                                             {r.duration?.toFixed(3)}s
                                         </Text>
                                     </View>
+                                    {/* <View style={styles.statsRow}>
+                                        {(r.heading !== null && r.heading !== undefined) && (
+                                            <>
+                                                <Text style={[styles.duration, { color: colors.textMuted }]}>
+                                                    {Math.round(r.heading)}°
+                                                </Text>
+                                            </>
+                                        )}
+                                        {(r.tilt !== null && r.tilt !== undefined) && (
+                                            <>
+                                                <Text style={[styles.separator, { color: colors.textMuted }]}> • </Text>
+                                                <Text style={[styles.duration, { color: colors.textMuted }]}>
+                                                    Tilt {Math.round(r.tilt)}°
+                                                </Text>
+                                            </>
+                                        )}
+                                    </View> */}
                                 </View>
 
                                 <View style={styles.rowRight}>

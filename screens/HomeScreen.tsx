@@ -8,6 +8,7 @@ import {
     StatusBar,
 } from 'react-native';
 import * as Location from 'expo-location';
+import { DeviceMotion } from 'expo-sensors';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, radius, fonts } from '../theme';
@@ -26,6 +27,7 @@ interface ButtonStatus {
     state: TargetState;
     startTime: number | null;
     startHeading: number | null;
+    startTilt: number | null;
 }
 
 export default function HomeScreen({ navigation }: any) {
@@ -34,7 +36,7 @@ export default function HomeScreen({ navigation }: any) {
 
     // Track the status of each button
     const [buttonStatuses, setButtonStatuses] = useState<ButtonStatus[]>(
-        Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null }))
+        Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null }))
     );
 
     // Track all completed measurements
@@ -49,16 +51,18 @@ export default function HomeScreen({ navigation }: any) {
     const [mapResult, setMapResult] = useState<TargetResult | null>(null); // Track the full result being viewed
     const [globalMapVisible, setGlobalMapVisible] = useState(false);
     const [heading, setHeading] = useState<number | null>(null);
+    const [tilt, setTilt] = useState<number | null>(null);
 
     // Reset when count changes
     useEffect(() => {
-        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null })));
+        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null })));
         setHistory([]);
     }, [settings.targetCount]);
 
     // GPS & Compass Logic
     useEffect(() => {
         let headingSub: Location.LocationSubscription | null = null;
+        let motionSub: any = null;
 
         (async () => {
             const { status } = await Location.requestForegroundPermissionsAsync();
@@ -67,12 +71,28 @@ export default function HomeScreen({ navigation }: any) {
                     // Track heading
                     if (settings.directionMode === 'sensor') {
                         headingSub = await Location.watchHeadingAsync((headingData) => {
-                            // Use trueHeading if available and valid (>0), else fallback to magHeading
                             const head = headingData.trueHeading > 0 ? headingData.trueHeading : headingData.magHeading;
                             setHeading(head);
                         });
                     } else {
                         setHeading(null);
+                    }
+
+                    // Track tilt
+                    if (settings.tiltEnabled) {
+                        motionSub = DeviceMotion.addListener((motionData) => {
+                            if (motionData.rotation) {
+                                // beta: 0 is flat on back, 1.57 (90deg) is standing up
+                                // We want 0 to be flat, 90 to be pointing straight up
+                                let pitch = motionData.rotation.beta * (180 / Math.PI);
+                                // Adjusting so holding it vertical is 90
+                                if (pitch < 0) pitch = Math.abs(pitch);
+                                setTilt(pitch);
+                            }
+                        });
+                        DeviceMotion.setUpdateInterval(100);
+                    } else {
+                        setTilt(null);
                     }
 
                     // Manage location 
@@ -90,8 +110,9 @@ export default function HomeScreen({ navigation }: any) {
 
         return () => {
             if (headingSub) headingSub.remove();
+            if (motionSub) motionSub.remove();
         };
-    }, [settings.locationMode, settings.directionMode]);
+    }, [settings.locationMode, settings.directionMode, settings.tiltEnabled]);
 
     // Fast-fallback for manual location (avoids permissions request delay)
     useEffect(() => {
@@ -110,7 +131,7 @@ export default function HomeScreen({ navigation }: any) {
             if (current.state === 'idle') {
                 // START RECORDING
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                updated[index] = { state: 'recording', startTime: Date.now(), startHeading: currentHeading };
+                updated[index] = { state: 'recording', startTime: Date.now(), startHeading: currentHeading, startTilt: tilt };
             } else {
                 // FINISH & SAVE TO HISTORY
                 const endTime = Date.now();
@@ -125,6 +146,7 @@ export default function HomeScreen({ navigation }: any) {
                     duration,
                     distance,
                     heading: current.startHeading,
+                    tilt: current.startTilt,
                     timestamp: Date.now(), // Unique time for keys
                 };
 
@@ -133,16 +155,16 @@ export default function HomeScreen({ navigation }: any) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
                 // Reset this specific button to Idle
-                updated[index] = { state: 'idle', startTime: null, startHeading: null };
+                updated[index] = { state: 'idle', startTime: null, startHeading: null, startTilt: null };
             }
             return updated;
         });
-    }, [heading]);
+    }, [heading, tilt]);
 
     const handleReset = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setHistory([]);
-        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null })));
+        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null })));
     };
 
     const handleOpenMap = (result: TargetResult) => {
@@ -169,6 +191,7 @@ export default function HomeScreen({ navigation }: any) {
                             <Text style={[styles.subtitle, { color: colors.textMuted }]}>
                                 {settings.locationMode === 'gps' ? 'GPS Active' : 'Manual Position'}
                                 {heading !== null && ` • ${heading.toFixed(0)}°`}
+                                {tilt !== null && settings.tiltEnabled && ` (Tilt: ${tilt.toFixed(0)}°)`}
                             </Text>
                         </View>
                     </View>
@@ -215,6 +238,7 @@ export default function HomeScreen({ navigation }: any) {
                     userLocation={userLocation}
                     distanceMeters={mapDistance}
                     heading={mapResult?.heading}
+                    tilt={mapResult?.tilt}
                     onClose={() => {
                         setMapVisible(false);
                         setTimeout(() => setMapResult(null), 300); // clear after animation

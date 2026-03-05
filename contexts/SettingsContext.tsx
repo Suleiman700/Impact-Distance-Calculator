@@ -10,14 +10,14 @@ interface SettingsContextType {
 }
 
 const SettingsContext = createContext<SettingsContextType>({
-    settings: { unit: 'km', targetCount: 1, theme: 'light', showLiveStats: true, showOnboarding: true, locationMode: 'gps', manualLocation: null, directionMode: 'off' },
+    settings: { unit: 'km', targetCount: 1, theme: 'light', showLiveStats: true, showOnboarding: true, locationMode: 'gps', manualLocation: null, directionMode: 'off', tiltEnabled: false },
     updateSettings: () => { },
     isLoaded: false,
     colors: lightColors,
 });
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-    const [settings, setSettings] = useState<Settings>({ unit: 'km', targetCount: 1, theme: 'light', showLiveStats: true, showOnboarding: true, locationMode: 'gps', manualLocation: null, directionMode: 'off' });
+    const [settings, setSettings] = useState<Settings>({ unit: 'km', targetCount: 1, theme: 'light', showLiveStats: true, showOnboarding: true, locationMode: 'gps', manualLocation: null, directionMode: 'off', tiltEnabled: false });
     const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {

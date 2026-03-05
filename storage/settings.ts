@@ -4,13 +4,14 @@ const SETTINGS_KEY = '@impact_distance_settings';
 
 export interface Settings {
     unit: 'km' | 'mile';
-    targetCount: number;
     theme: 'light' | 'dark';
     showLiveStats: boolean;
     showOnboarding: boolean;
     locationMode: 'gps' | 'manual';
     manualLocation: { latitude: number; longitude: number } | null;
+    targetCount: number;
     directionMode: 'off' | 'sensor';
+    tiltEnabled: boolean; // 3D tilt tracking
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: Settings = {
     locationMode: 'gps',
     manualLocation: null,
     directionMode: 'off',
+    tiltEnabled: false,
 };
 
 export async function loadSettings(): Promise<Settings> {

@@ -25,10 +25,11 @@ interface Props {
     userLocation: { latitude: number; longitude: number } | null;
     distanceMeters: number;
     heading?: number | null;
+    tilt?: number | null;
     onClose: () => void;
 }
 
-export default function MapDrawer({ visible, userLocation, distanceMeters, heading, onClose }: Props) {
+export default function MapDrawer({ visible, userLocation, distanceMeters, heading, tilt, onClose }: Props) {
     const { colors, settings } = useSettings();
     const slideAnim = useRef(new Animated.Value(DRAWER_HEIGHT)).current;
     const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -75,8 +76,8 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, headi
                     duration: 250,
                     useNativeDriver: true,
                 }),
-            ]).start(({ finished }) => {
-                if (finished) setIsFullyClosed(true);
+            ]).start(() => {
+                setIsFullyClosed(true);
             });
         }
 
@@ -98,9 +99,6 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, headi
           ${LEAFLET_CSS}
           body { margin: 0; padding: 0; }
           #map { height: 100vh; width: 100vw; background: ${colors.bg}; }
-          .leaflet-tile { 
-            filter: ${settings.theme === 'dark' ? 'invert(100%) hue-rotate(180deg) brightness(85%) contrast(85%)' : 'none'}; 
-          }
         </style>
       </head>
       <body>
@@ -134,40 +132,57 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, headi
           if (${distanceMeters} > 0) {
             if ('${settings.directionMode}' === 'sensor') {
               // Draw line and arrow (no circle)
-              const compassHeading = ${heading !== null && heading !== undefined ? heading : 0};
-              const R = 6371e3; // metres
+              const compassHeading = ${heading ?? 0};
+              const currentTilt = ${tilt ?? 0};
+              
+              const R = 6371e3; // earth radius
+              const slantDist = ${distanceMeters};
+              
+              // Project the 3D slant line onto the 2D plane
+              // Clamp tilt to absolute 0-90 for projection
+              const clampedTilt = Math.min(90, Math.max(0, Math.abs(currentTilt)));
+              const tiltRad = clampedTilt * Math.PI / 180;
+              const groundDist = slantDist * Math.cos(tiltRad);
+
               const brng = compassHeading * Math.PI / 180;
               const lat1 = ${userLocation.latitude} * Math.PI / 180;
               const lon1 = ${userLocation.longitude} * Math.PI / 180;
 
-              const lat2 = Math.asin(Math.sin(lat1) * Math.cos(${distanceMeters} / R) +
-                                   Math.cos(lat1) * Math.sin(${distanceMeters} / R) * Math.cos(brng));
-              const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(${distanceMeters} / R) * Math.cos(lat1),
-                                           Math.cos(${distanceMeters} / R) - Math.sin(lat1) * Math.sin(lat2));
+              const lat2 = Math.asin(Math.sin(lat1) * Math.cos(groundDist / R) +
+                                   Math.cos(lat1) * Math.sin(groundDist / R) * Math.cos(brng));
+              const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(groundDist / R) * Math.cos(lat1),
+                                           Math.cos(groundDist / R) - Math.sin(lat1) * Math.sin(lat2));
 
               const fLat = lat2 * 180 / Math.PI;
               const fLon = lon2 * 180 / Math.PI;
 
-              L.polyline([[${userLocation.latitude}, ${userLocation.longitude}], [fLat, fLon]], { color: '${colors.danger}', dashArray: '5, 5', weight: 2 }).addTo(map);
+              // Draw the projected 2D Ground Line
+              L.polyline([[${userLocation.latitude}, ${userLocation.longitude}], [fLat, fLon]], { 
+                  color: '${colors.danger}', 
+                  weight: 3, 
+                  opacity: 0.8 
+              }).addTo(map);
               
-              // Custom Arrow head using an SVG, rotated to the target's heading
               const tgtIcon = L.divIcon({
-                html: '<div style="width: 20px; height: 20px; transform: rotate(' + compassHeading + 'deg); transform-origin: center center; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="${colors.danger}" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 0px 2px rgba(0,0,0,0.5));"><path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"/></svg></div>',
+                html: '<div style="width: 24px; height: 24px; transform: rotate(' + compassHeading + 'deg); display: flex; align-items: center; justify-content: center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="${colors.danger}" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 0px 2px rgba(0,0,0,0.5));"><path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"/></svg></div>',
                 className: '',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
               });
               
-              const headingLabel = Math.round(compassHeading) + '°';
-              L.marker([fLat, fLon], { icon: tgtIcon }).addTo(map);
-            // L.marker([fLat, fLon], { icon: tgtIcon }).addTo(map).bindPopup("Estimated Target<br/>Heading: " + headingLabel).openPopup();
+              let popupContent = "<b>Ballistic Projection</b><br/>" +
+                               "Range: " + Math.round(slantDist) + "m (Sound Path)<br/>" +
+                               "Heading: " + Math.round(compassHeading) + "°<br/>" +
+                               "Tilt Offset: " + Math.round(currentTilt) + "°<br/>" +
+                               "Ground Dist: " + Math.round(groundDist) + "m";
 
-              // Adjust View to fit the line
+              L.marker([fLat, fLon], { icon: tgtIcon }).addTo(map).bindPopup(popupContent).openPopup();
+
               const group = new L.featureGroup([
                   L.marker([${userLocation.latitude}, ${userLocation.longitude}]),
                   L.marker([fLat, fLon])
               ]);
-              map.fitBounds(group.getBounds(), { padding: [30, 30] });
+              map.fitBounds(group.getBounds(), { padding: [50, 50] });
 
             } else {
               // Draw just the circle
@@ -185,7 +200,10 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, headi
     ` : '';
 
     return (
-        <View style={StyleSheet.absoluteFill} pointerEvents={isFullyClosed ? 'none' : 'auto'}>
+        <View
+            style={[StyleSheet.absoluteFill, { zIndex: visible ? 1000 : (isFullyClosed ? -1 : 1000) }]}
+            pointerEvents={visible ? 'auto' : 'none'}
+        >
             <Animated.View
                 style={[
                     styles.backdrop,

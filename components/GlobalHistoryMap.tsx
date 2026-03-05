@@ -75,8 +75,8 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
                     duration: 250,
                     useNativeDriver: true,
                 }),
-            ]).start(({ finished }) => {
-                if (finished) setIsFullyClosed(true);
+            ]).start(() => {
+                setIsFullyClosed(true);
             });
         }
 
@@ -98,9 +98,6 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
           ${LEAFLET_CSS}
           body { margin: 0; padding: 0; }
           #map { height: 100vh; width: 100vw; background: ${colors.bg}; }
-          .leaflet-tile { 
-            filter: ${settings.theme === 'dark' ? 'invert(100%) hue-rotate(180deg) brightness(85%) contrast(85%)' : 'none'}; 
-          }
         </style>
       </head>
       <body>
@@ -145,24 +142,40 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
                           const lat1 = ${userLocation.latitude} * Math.PI / 180;
                           const lon1 = ${userLocation.longitude} * Math.PI / 180;
                           
-                          const lat2 = Math.asin(Math.sin(lat1) * Math.cos(${r.distance} / R) +
-                                              Math.cos(lat1) * Math.sin(${r.distance} / R) * Math.cos(brng));
-                          const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(${r.distance} / R) * Math.cos(lat1),
-                                                      Math.cos(${r.distance} / R) - Math.sin(lat1) * Math.sin(lat2));
+                          // Project 3D line to 2D Ground: ground = slant * cos(tilt)
+                          const tiltVal = ${r.tilt ?? 0};
+                          const clampedTilt = Math.min(90, Math.max(0, Math.abs(tiltVal)));
+                          const tiltRad = clampedTilt * Math.PI / 180;
+                          const groundDist = ${r.distance} * Math.cos(tiltRad);
+
+                          const lat2 = Math.asin(Math.sin(lat1) * Math.cos(groundDist / R) +
+                                              Math.cos(lat1) * Math.sin(groundDist / R) * Math.cos(brng));
+                          const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(groundDist / R) * Math.cos(lat1),
+                                                      Math.cos(groundDist / R) - Math.sin(lat1) * Math.sin(lat2));
                                                       
                           const fLat = lat2 * 180 / Math.PI;
                           const fLon = lon2 * 180 / Math.PI;
                           
-                          L.polyline([[${userLocation.latitude}, ${userLocation.longitude}], [fLat, fLon]], { color: '${colors.danger}', dashArray: '5, 5', weight: 1, opacity: 0.7 }).addTo(map);
-                          
+                          // Draw the projected 2D Ground Line
+                          L.polyline([[${userLocation.latitude}, ${userLocation.longitude}], [fLat, fLon]], { 
+                              color: '${colors.danger}', 
+                              weight: 1, 
+                              opacity: 0.6 
+                          }).addTo(map);
+
                           const tgtIcon = L.divIcon({
-                              html: '<div style="width: 16px; height: 16px; transform: rotate(${heading}deg); transform-origin: center center; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="${colors.danger}" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 0px 2px rgba(0,0,0,0.5));"><path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"/></svg></div>',
+                              html: '<div style="width: 16px; height: 16px; transform: rotate(${heading}deg); transform-origin: center center; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="${colors.danger}" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 0px 1px rgba(0,0,0,0.5));"><path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"/></svg></div>',
                               className: '',
                               iconSize: [16, 16],
                               iconAnchor: [8, 8]
                           });
                           
-                          const m = L.marker([fLat, fLon], { icon: tgtIcon }).addTo(map).bindPopup("Target ${r.index + 1}: ${r.distance.toFixed(0)}m, ${Math.round(heading)}°");
+                          let popupDesc = "Target ${r.index + 1}: ${r.distance.toFixed(0)}m (Sound Range)<br/>" +
+                                      "Ground Dist: " + Math.round(groundDist) + "m<br/>" +
+                                      "Heading: ${Math.round(heading)}°";
+                          if (tiltVal !== 0) popupDesc += " • Tilt: " + Math.round(tiltVal) + "°";
+
+                          const m = L.marker([fLat, fLon], { icon: tgtIcon }).addTo(map).bindPopup(popupDesc);
                           allMarkers.push(m);
                       })();
                   `;
@@ -181,18 +194,21 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
                   `;
         }
     }).join('\n')}
-          
-          if (allMarkers.length > 1) {
-              const group = new L.featureGroup(allMarkers);
-              map.fitBounds(group.getBounds(), { padding: [30, 30] });
-          }
-        </script>
-      </body>
-    </html>
+
+if (allMarkers.length > 1) {
+    const group = new L.featureGroup(allMarkers);
+    map.fitBounds(group.getBounds(), { padding: [30, 30] });
+}
+        </script >
+      </body >
+    </html >
     ` : '';
 
     return (
-        <View style={StyleSheet.absoluteFill} pointerEvents={isFullyClosed ? 'none' : 'auto'}>
+        <View
+            style={[StyleSheet.absoluteFill, { zIndex: visible ? 1000 : (isFullyClosed ? -1 : 1000) }]}
+            pointerEvents={visible ? 'auto' : 'none'}
+        >
             <Animated.View
                 style={[
                     styles.backdrop,

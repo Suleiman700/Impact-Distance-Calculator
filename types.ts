@@ -3,7 +3,8 @@ export interface TargetResult {
     startTime: number | null;
     endTime: number | null;
     duration: number | null;
-    distance: number | null;
-    heading?: number | null;
-    timestamp?: number;
+    distance: number;
+    heading?: number | null; // Compass heading in degrees (0-360)
+    tilt?: number | null; // Pitch angle in degrees for tracking 3D tilt
+    timestamp: number;
 }

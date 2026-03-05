@@ -167,6 +167,28 @@ export default function SettingsScreen({ navigation }: any) {
                         )}
                     </View>
 
+                    {/* Tilt Sensor Section */}
+                    <View style={styles.section}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>3D Tilt tracking</Text>
+                            <TouchableOpacity
+                                style={[
+                                    styles.toggleSwitch,
+                                    { backgroundColor: settings.tiltEnabled ? colors.accent : colors.cardBorder }
+                                ]}
+                                onPress={() => handleUpdate({ tiltEnabled: !settings.tiltEnabled })}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[styles.toggleKnob, { transform: [{ translateX: settings.tiltEnabled ? 20 : 0 }] }]} />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{ marginTop: spacing.sm }}>
+                            <Text style={[{ fontSize: 13, color: colors.textMuted }]}>
+                                Uses the phone's gyroscope/accelerometer to detect vertical aim. Enables 3D perspective on mapping.
+                            </Text>
+                        </View>
+                    </View>
+
                     {/* Unit Toggle */}
                     <View style={styles.section}>
                         <Text style={[styles.sectionTitle, { color: colors.text }]}>Distance Unit</Text>
