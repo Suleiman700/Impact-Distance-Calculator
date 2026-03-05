@@ -24,7 +24,7 @@ export default function SettingsScreen({ navigation }: any) {
 
     const units: Array<'km' | 'mile'> = ['km', 'mile'];
     const themes: Array<'light' | 'dark'> = ['light', 'dark'];
-    const targetOptions = [1, 2, 3, 4, 5];
+    const targetOptions = [1, 2, 3];
 
     const handleUpdate = (partial: Partial<typeof settings>) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
