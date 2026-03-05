@@ -10,6 +10,7 @@ export interface Settings {
     showOnboarding: boolean;
     locationMode: 'gps' | 'manual';
     manualLocation: { latitude: number; longitude: number } | null;
+    directionMode: 'off' | 'sensor';
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -20,6 +21,7 @@ const DEFAULT_SETTINGS: Settings = {
     showOnboarding: true,
     locationMode: 'gps',
     manualLocation: null,
+    directionMode: 'off',
 };
 
 export async function loadSettings(): Promise<Settings> {

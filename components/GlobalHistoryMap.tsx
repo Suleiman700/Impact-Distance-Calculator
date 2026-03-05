@@ -127,24 +127,65 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
 
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-          // Add Marker
-          L.marker([${userLocation.latitude}, ${userLocation.longitude}]).addTo(map);
+          // Add Marker for user
+          L.marker([${userLocation.latitude}, ${userLocation.longitude}]).addTo(map).bindPopup("Your Location");
 
-          // Add Circles for all history items
+          const allMarkers = [L.marker([${userLocation.latitude}, ${userLocation.longitude}])];
+
+          // Add Targets
           ${history.map((r) => {
-        if (r.distance && r.distance > 0) {
+        if (!r.distance || r.distance <= 0) return '';
+
+        if (settings.directionMode === 'sensor') {
+            const heading = r.heading ?? 0;
             return `
-                    L.circle([${userLocation.latitude}, ${userLocation.longitude}], {
-                        color: '${colors.accent}',
-                        fillColor: '${colors.accent}',
-                        fillOpacity: 0.1,
-                        weight: 2,
-                        radius: ${r.distance}
-                    }).addTo(map).bindPopup("Target ${r.index + 1}: ${r.distance.toFixed(0)}m");
-                 `;
+                      (function() {
+                          const R = 6371e3;
+                          const brng = ${heading} * Math.PI / 180;
+                          const lat1 = ${userLocation.latitude} * Math.PI / 180;
+                          const lon1 = ${userLocation.longitude} * Math.PI / 180;
+                          
+                          const lat2 = Math.asin(Math.sin(lat1) * Math.cos(${r.distance} / R) +
+                                              Math.cos(lat1) * Math.sin(${r.distance} / R) * Math.cos(brng));
+                          const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(${r.distance} / R) * Math.cos(lat1),
+                                                      Math.cos(${r.distance} / R) - Math.sin(lat1) * Math.sin(lat2));
+                                                      
+                          const fLat = lat2 * 180 / Math.PI;
+                          const fLon = lon2 * 180 / Math.PI;
+                          
+                          L.polyline([[${userLocation.latitude}, ${userLocation.longitude}], [fLat, fLon]], { color: '${colors.danger}', dashArray: '5, 5', weight: 1, opacity: 0.7 }).addTo(map);
+                          
+                          const tgtIcon = L.divIcon({
+                              html: '<div style="width: 16px; height: 16px; transform: rotate(${heading}deg); transform-origin: center center; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="${colors.danger}" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 0px 2px rgba(0,0,0,0.5));"><path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"/></svg></div>',
+                              className: '',
+                              iconSize: [16, 16],
+                              iconAnchor: [8, 8]
+                          });
+                          
+                          const m = L.marker([fLat, fLon], { icon: tgtIcon }).addTo(map).bindPopup("Target ${r.index + 1}: ${r.distance.toFixed(0)}m, ${Math.round(heading)}°");
+                          allMarkers.push(m);
+                      })();
+                  `;
+        } else {
+            return `
+                      (function() {
+                          const c = L.circle([${userLocation.latitude}, ${userLocation.longitude}], {
+                              color: '${colors.accent}',
+                              fillColor: '${colors.accent}',
+                              fillOpacity: 0.1,
+                              weight: 2,
+                              radius: ${r.distance}
+                          }).addTo(map).bindPopup("Target ${r.index + 1}: ${r.distance.toFixed(0)}m");
+                          allMarkers.push(c);
+                      })();
+                  `;
         }
-        return '';
     }).join('\n')}
+          
+          if (allMarkers.length > 1) {
+              const group = new L.featureGroup(allMarkers);
+              map.fitBounds(group.getBounds(), { padding: [30, 30] });
+          }
         </script>
       </body>
     </html>

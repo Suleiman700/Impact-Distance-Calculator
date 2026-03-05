@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { spacing, radius, fonts } from '../theme';
 import { TargetResult } from '../types';
 import { formatDistance } from '../utils/calculateDistance';
@@ -11,9 +12,10 @@ interface Props {
     onOpenMap: (result: TargetResult) => void;
     onOpenGlobalMap: () => void;
     onClear: () => void;
+    onDelete: (timestamp: number) => void;
 }
 
-export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClear }: Props) {
+export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClear, onDelete }: Props) {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const { settings, colors } = useSettings();
 
@@ -78,43 +80,60 @@ export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClea
                     persistentScrollbar={true}
                 >
                     {results.map((r, i) => (
-                        <View
+                        <Swipeable
                             key={r.timestamp || i}
-                            style={[
-                                styles.row,
-                                { borderBottomColor: colors.cardBorder },
-                                i === results.length - 1 && { borderBottomWidth: 0 }
-                            ]}
+                            overshootRight={false}
+                            renderRightActions={() => (
+                                <View style={styles.deleteActionContainer}>
+                                    <TouchableOpacity
+                                        style={[styles.deleteButton, { backgroundColor: colors.danger }]}
+                                        onPress={() => {
+                                            if (r.timestamp) onDelete(r.timestamp);
+                                        }}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons name="trash-outline" size={20} color="#FFF" />
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         >
-                            <View style={styles.rowLeft}>
-                                <Text style={[styles.targetName, { color: colors.textBright }]}>
-                                    Target {r.index + 1}
-                                </Text>
-                                <View style={styles.statsRow}>
-                                    <Text style={[styles.timeLabel, { color: colors.textMuted }]}>
-                                        {new Date(r.timestamp || 0).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                            <View
+                                style={[
+                                    styles.row,
+                                    { borderBottomColor: colors.cardBorder, backgroundColor: colors.card },
+                                    i === results.length - 1 && { borderBottomWidth: 0 }
+                                ]}
+                            >
+                                <View style={styles.rowLeft}>
+                                    <Text style={[styles.targetName, { color: colors.textBright }]}>
+                                        Target {r.index + 1}
                                     </Text>
-                                    <Text style={[styles.separator, { color: colors.textMuted }]}> • </Text>
-                                    <Text style={[styles.duration, { color: colors.textMuted }]}>
-                                        {r.duration?.toFixed(3)}s
+                                    <View style={styles.statsRow}>
+                                        <Text style={[styles.timeLabel, { color: colors.textMuted }]}>
+                                            {new Date(r.timestamp || 0).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                                        </Text>
+                                        <Text style={[styles.separator, { color: colors.textMuted }]}> • </Text>
+                                        <Text style={[styles.duration, { color: colors.textMuted }]}>
+                                            {r.duration?.toFixed(3)}s
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.rowRight}>
+                                    <Text style={[styles.distance, { color: colors.accent }]}>
+                                        {r.distance !== null ? formatDistance(r.distance, settings.unit) : '--'}
                                     </Text>
+                                    <TouchableOpacity
+                                        style={[styles.mapButton, { backgroundColor: colors.accentDim }]}
+                                        onPress={() => onOpenMap(r)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Ionicons name="map-outline" size={14} color={colors.accent} style={{ marginRight: 4 }} />
+                                        <Text style={[styles.mapButtonText, { color: colors.accent }]}>Map</Text>
+                                    </TouchableOpacity>
                                 </View>
                             </View>
-
-                            <View style={styles.rowRight}>
-                                <Text style={[styles.distance, { color: colors.accent }]}>
-                                    {r.distance !== null ? formatDistance(r.distance, settings.unit) : '--'}
-                                </Text>
-                                <TouchableOpacity
-                                    style={[styles.mapButton, { backgroundColor: colors.accentDim }]}
-                                    onPress={() => onOpenMap(r)}
-                                    activeOpacity={0.7}
-                                >
-                                    <Ionicons name="map-outline" size={14} color={colors.accent} style={{ marginRight: 4 }} />
-                                    <Text style={[styles.mapButtonText, { color: colors.accent }]}>Map</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+                        </Swipeable>
                     ))}
                 </ScrollView>
             </View>
@@ -220,5 +239,19 @@ const styles = StyleSheet.create({
     mapButtonText: {
         fontSize: 13,
         ...fonts.semiBold,
+    },
+    deleteActionContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 60,
+        paddingVertical: spacing.sm,
+        paddingLeft: spacing.sm,
+    },
+    deleteButton: {
+        width: 44,
+        height: 44,
+        borderRadius: radius.md,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

@@ -25,6 +25,7 @@ type TargetState = 'idle' | 'recording';
 interface ButtonStatus {
     state: TargetState;
     startTime: number | null;
+    startHeading: number | null;
 }
 
 export default function HomeScreen({ navigation }: any) {
@@ -33,7 +34,7 @@ export default function HomeScreen({ navigation }: any) {
 
     // Track the status of each button
     const [buttonStatuses, setButtonStatuses] = useState<ButtonStatus[]>(
-        Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null }))
+        Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null }))
     );
 
     // Track all completed measurements
@@ -45,37 +46,63 @@ export default function HomeScreen({ navigation }: any) {
     } | null>(null);
     const [mapVisible, setMapVisible] = useState(false);
     const [mapDistance, setMapDistance] = useState(0);
+    const [mapResult, setMapResult] = useState<TargetResult | null>(null); // Track the full result being viewed
     const [globalMapVisible, setGlobalMapVisible] = useState(false);
+    const [heading, setHeading] = useState<number | null>(null);
 
     // Reset when count changes
     useEffect(() => {
-        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null })));
+        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null })));
         setHistory([]);
     }, [settings.targetCount]);
 
-    // GPS Logic
+    // GPS & Compass Logic
     useEffect(() => {
-        if (settings.locationMode === 'manual') {
-            setUserLocation(settings.manualLocation);
-            return;
-        }
+        let headingSub: Location.LocationSubscription | null = null;
 
         (async () => {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status === 'granted') {
                 try {
-                    const last = await Location.getLastKnownPositionAsync({});
-                    if (last) setUserLocation({ latitude: last.coords.latitude, longitude: last.coords.longitude });
-                    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                    setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+                    // Track heading
+                    if (settings.directionMode === 'sensor') {
+                        headingSub = await Location.watchHeadingAsync((headingData) => {
+                            // Use trueHeading if available and valid (>0), else fallback to magHeading
+                            const head = headingData.trueHeading > 0 ? headingData.trueHeading : headingData.magHeading;
+                            setHeading(head);
+                        });
+                    } else {
+                        setHeading(null);
+                    }
+
+                    // Manage location 
+                    if (settings.locationMode !== 'manual') {
+                        const last = await Location.getLastKnownPositionAsync({});
+                        if (last) setUserLocation({ latitude: last.coords.latitude, longitude: last.coords.longitude });
+                        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                        setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+                    }
                 } catch (e) {
-                    console.warn('Location error:', e);
+                    console.warn('Tracking errors:', e);
                 }
             }
         })();
+
+        return () => {
+            if (headingSub) headingSub.remove();
+        };
+    }, [settings.locationMode, settings.directionMode]);
+
+    // Fast-fallback for manual location (avoids permissions request delay)
+    useEffect(() => {
+        if (settings.locationMode === 'manual') setUserLocation(settings.manualLocation);
     }, [settings.locationMode, settings.manualLocation]);
 
     const handleTargetPress = useCallback((index: number) => {
+        // Use a functional update but we need access to the current heading state here.
+        // It's better to read it directly from the component's current scope which is trapped here.
+        const currentHeading = heading;
+
         setButtonStatuses((prev) => {
             const updated = [...prev];
             const current = updated[index];
@@ -83,7 +110,7 @@ export default function HomeScreen({ navigation }: any) {
             if (current.state === 'idle') {
                 // START RECORDING
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                updated[index] = { state: 'recording', startTime: Date.now() };
+                updated[index] = { state: 'recording', startTime: Date.now(), startHeading: currentHeading };
             } else {
                 // FINISH & SAVE TO HISTORY
                 const endTime = Date.now();
@@ -97,29 +124,31 @@ export default function HomeScreen({ navigation }: any) {
                     endTime,
                     duration,
                     distance,
+                    heading: current.startHeading,
                     timestamp: Date.now(), // Unique time for keys
                 };
 
-                setHistory(prevHistory => [newResult, ...prevHistory]); // Add to top
+                setHistory((prevHistory) => [newResult, ...prevHistory]); // Add to top
 
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
                 // Reset this specific button to Idle
-                updated[index] = { state: 'idle', startTime: null };
+                updated[index] = { state: 'idle', startTime: null, startHeading: null };
             }
             return updated;
         });
-    }, []);
+    }, [heading]);
 
     const handleReset = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setHistory([]);
-        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null })));
+        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null })));
     };
 
     const handleOpenMap = (result: TargetResult) => {
         if (result.distance) {
             setMapDistance(result.distance);
+            setMapResult(result);
             setMapVisible(true);
         }
     };
@@ -139,7 +168,7 @@ export default function HomeScreen({ navigation }: any) {
                             />
                             <Text style={[styles.subtitle, { color: colors.textMuted }]}>
                                 {settings.locationMode === 'gps' ? 'GPS Active' : 'Manual Position'}
-                                {/* {userLocation ? ` (${userLocation.latitude.toFixed(2)}, ${userLocation.longitude.toFixed(2)})` : ' (Not Set)'} */}
+                                {heading !== null && ` • ${heading.toFixed(0)}°`}
                             </Text>
                         </View>
                     </View>
@@ -173,6 +202,9 @@ export default function HomeScreen({ navigation }: any) {
                         onOpenMap={handleOpenMap}
                         onOpenGlobalMap={() => setGlobalMapVisible(true)}
                         onClear={handleReset}
+                        onDelete={(timestamp) => {
+                            setHistory(prev => prev.filter(item => item.timestamp !== timestamp));
+                        }}
                     />
 
                     <View style={{ height: spacing.xxl }} />
@@ -182,7 +214,11 @@ export default function HomeScreen({ navigation }: any) {
                     visible={mapVisible}
                     userLocation={userLocation}
                     distanceMeters={mapDistance}
-                    onClose={() => setMapVisible(false)}
+                    heading={mapResult?.heading}
+                    onClose={() => {
+                        setMapVisible(false);
+                        setTimeout(() => setMapResult(null), 300); // clear after animation
+                    }}
                 />
 
                 <GlobalHistoryMap

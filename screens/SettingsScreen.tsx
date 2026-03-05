@@ -132,6 +132,41 @@ export default function SettingsScreen({ navigation }: any) {
                         )}
                     </View>
 
+                    {/* Direction Detection Section */}
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Impact Direction</Text>
+                        <View style={[styles.segmented, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                            {['off', 'sensor'].map((m) => (
+                                <TouchableOpacity
+                                    key={m}
+                                    style={[
+                                        styles.segment,
+                                        settings.directionMode === m && { backgroundColor: colors.accent },
+                                    ]}
+                                    onPress={() => handleUpdate({ directionMode: m as any })}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.segmentText,
+                                            { color: colors.textMuted },
+                                            settings.directionMode === m && { color: '#FFF', ...fonts.semiBold },
+                                        ]}
+                                    >
+                                        {m === 'off' ? 'Off' : 'Compass Sensor'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                        {settings.directionMode === 'sensor' && (
+                            <View style={{ marginTop: spacing.sm }}>
+                                <Text style={[{ fontSize: 13, color: colors.textMuted }]}>
+                                    Records the direction you are facing when capturing a target and plots the trajectory on the map.
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
                     {/* Unit Toggle */}
                     <View style={styles.section}>
                         <Text style={[styles.sectionTitle, { color: colors.text }]}>Distance Unit</Text>
