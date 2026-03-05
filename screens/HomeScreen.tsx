@@ -18,6 +18,7 @@ import { TargetResult } from '../types';
 import TargetButton from '../components/TargetButton';
 import ResultCard from '../components/ResultCard';
 import MapDrawer from '../components/MapDrawer';
+import GlobalHistoryMap from '../components/GlobalHistoryMap';
 
 type TargetState = 'idle' | 'recording';
 
@@ -44,6 +45,7 @@ export default function HomeScreen({ navigation }: any) {
     } | null>(null);
     const [mapVisible, setMapVisible] = useState(false);
     const [mapDistance, setMapDistance] = useState(0);
+    const [globalMapVisible, setGlobalMapVisible] = useState(false);
 
     // Reset when count changes
     useEffect(() => {
@@ -169,6 +171,7 @@ export default function HomeScreen({ navigation }: any) {
                     <ResultCard
                         results={history}
                         onOpenMap={handleOpenMap}
+                        onOpenGlobalMap={() => setGlobalMapVisible(true)}
                         onClear={handleReset}
                     />
 
@@ -180,6 +183,13 @@ export default function HomeScreen({ navigation }: any) {
                     userLocation={userLocation}
                     distanceMeters={mapDistance}
                     onClose={() => setMapVisible(false)}
+                />
+
+                <GlobalHistoryMap
+                    visible={globalMapVisible}
+                    userLocation={userLocation}
+                    history={history}
+                    onClose={() => setGlobalMapVisible(false)}
                 />
             </View>
         </View>

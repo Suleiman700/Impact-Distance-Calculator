@@ -9,10 +9,11 @@ import { Ionicons } from '@expo/vector-icons';
 interface Props {
     results: TargetResult[];
     onOpenMap: (result: TargetResult) => void;
+    onOpenGlobalMap: () => void;
     onClear: () => void;
 }
 
-export default function ResultCard({ results, onOpenMap, onClear }: Props) {
+export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClear }: Props) {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const { settings, colors } = useSettings();
 
@@ -47,13 +48,25 @@ export default function ResultCard({ results, onOpenMap, onClear }: Props) {
                     </View>
                 </View>
 
-                <TouchableOpacity
-                    onPress={onClear}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    activeOpacity={0.6}
-                >
-                    <Text style={[styles.clearText, { color: colors.textMuted }]}>Clear all</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
+                    <TouchableOpacity
+                        onPress={onOpenGlobalMap}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        activeOpacity={0.6}
+                        style={{ flexDirection: 'row', alignItems: 'center' }}
+                    >
+                        <Ionicons name="map-outline" size={16} color={colors.accent} style={{ marginRight: 4 }} />
+                        <Text style={[styles.clearText, { color: colors.accent }]}>All</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={onClear}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        activeOpacity={0.6}
+                    >
+                        <Text style={[styles.clearText, { color: colors.textMuted }]}>Clear all</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <View style={styles.scrollWrapper}>
