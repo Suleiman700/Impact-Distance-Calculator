@@ -20,6 +20,7 @@ import TargetButton from '../components/TargetButton';
 import ResultCard from '../components/ResultCard';
 import MapDrawer from '../components/MapDrawer';
 import GlobalHistoryMap from '../components/GlobalHistoryMap';
+import { useHistory } from '../contexts/HistoryContext';
 
 type TargetState = 'idle' | 'recording';
 
@@ -39,8 +40,7 @@ export default function HomeScreen({ navigation }: any) {
         Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null }))
     );
 
-    // Track all completed measurements
-    const [history, setHistory] = useState<TargetResult[]>([]);
+    const { history, addResult, deleteResult, clearHistory } = useHistory();
 
     const [userLocation, setUserLocation] = useState<{
         latitude: number;
@@ -56,7 +56,6 @@ export default function HomeScreen({ navigation }: any) {
     // Reset when count changes
     useEffect(() => {
         setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null })));
-        setHistory([]);
     }, [settings.targetCount]);
 
     // GPS & Compass Logic
@@ -148,9 +147,11 @@ export default function HomeScreen({ navigation }: any) {
                     heading: current.startHeading,
                     tilt: current.startTilt,
                     timestamp: Date.now(), // Unique time for keys
+                    latitude: userLocation?.latitude,
+                    longitude: userLocation?.longitude,
                 };
 
-                setHistory((prevHistory) => [newResult, ...prevHistory]); // Add to top
+                addResult(newResult);
 
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -159,11 +160,11 @@ export default function HomeScreen({ navigation }: any) {
             }
             return updated;
         });
-    }, [heading, tilt]);
+    }, [heading, tilt, userLocation]);
 
-    const handleReset = () => {
+    const handleReset = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setHistory([]);
+        clearHistory();
         setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null })));
     };
 
@@ -225,9 +226,7 @@ export default function HomeScreen({ navigation }: any) {
                         onOpenMap={handleOpenMap}
                         onOpenGlobalMap={() => setGlobalMapVisible(true)}
                         onClear={handleReset}
-                        onDelete={(timestamp) => {
-                            setHistory(prev => prev.filter(item => item.timestamp !== timestamp));
-                        }}
+                        onDelete={deleteResult}
                     />
 
                     <View style={{ height: spacing.xxl }} />

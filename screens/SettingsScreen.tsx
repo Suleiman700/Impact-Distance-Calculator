@@ -6,6 +6,8 @@ import {
     TouchableOpacity,
     StatusBar,
     ScrollView,
+    Alert,
+    Share,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +15,7 @@ import { spacing, radius, fonts } from '../theme';
 import { useSettings } from '../contexts/SettingsContext';
 import { Ionicons } from '@expo/vector-icons';
 import ManualLocationPicker from '../components/ManualLocationPicker';
+import { loadHistory, clearHistory } from '../storage/history';
 
 export default function SettingsScreen({ navigation }: any) {
     const { settings, updateSettings, colors } = useSettings();
@@ -272,6 +275,62 @@ export default function SettingsScreen({ navigation }: any) {
                         </TouchableOpacity>
                     </View>
 
+
+                    {/* Data Management Section */}
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Data Management</Text>
+                        <View style={{ gap: spacing.md }}>
+                            <TouchableOpacity
+                                style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+                                onPress={async () => {
+                                    const h = await loadHistory();
+                                    if (h.length === 0) {
+                                        Alert.alert("Empty", "No data to export.");
+                                        return;
+                                    }
+                                    try {
+                                        await Share.share({
+                                            message: JSON.stringify(h, null, 2),
+                                            title: 'Impact Data Export'
+                                        });
+                                    } catch (e) {
+                                        console.error(e);
+                                    }
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="download-outline" size={20} color={colors.accent} />
+                                <Text style={[styles.toggleLabel, { color: colors.text }]}>Export Tracking History (JSON)</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.danger + '44' }]}
+                                onPress={() => {
+                                    Alert.alert(
+                                        "Wipe All Data?",
+                                        "Are you sure you want to permanently delete all tracking history? This cannot be undone.",
+                                        [
+                                            { text: "Cancel", style: "cancel" },
+                                            {
+                                                text: "Delete All",
+                                                style: "destructive",
+                                                onPress: async () => {
+                                                    await clearHistory();
+                                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                                    Alert.alert("Deleted", "All history has been wiped.");
+                                                }
+                                            }
+                                        ]
+                                    );
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                                <Text style={[styles.toggleLabel, { color: colors.danger, ...fonts.semiBold }]}>Wipe All Records</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
                     {/* Info */}
                     <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                         <Text style={[styles.infoTitle, { color: colors.textBright }]}>How it works</Text>
@@ -300,6 +359,8 @@ export default function SettingsScreen({ navigation }: any) {
                             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
                         </TouchableOpacity>
                     </View>
+
+
                 </ScrollView>
                 <ManualLocationPicker
                     visible={pickerVisible}
@@ -459,5 +520,13 @@ const styles = StyleSheet.create({
     manualButtonText: {
         fontSize: 14,
         ...fonts.bold,
+    },
+    actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: spacing.md,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        gap: spacing.md,
     },
 });

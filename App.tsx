@@ -46,12 +46,15 @@ function AppContent() {
 }
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { HistoryProvider } from './contexts/HistoryContext';
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <SettingsProvider>
-        <AppContent />
+        <HistoryProvider>
+          <AppContent />
+        </HistoryProvider>
       </SettingsProvider>
     </SafeAreaProvider>
   );

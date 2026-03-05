@@ -7,4 +7,6 @@ export interface TargetResult {
     heading?: number | null; // Compass heading in degrees (0-360)
     tilt?: number | null; // Pitch angle in degrees for tracking 3D tilt
     timestamp: number;
+    latitude?: number | null;
+    longitude?: number | null;
 }

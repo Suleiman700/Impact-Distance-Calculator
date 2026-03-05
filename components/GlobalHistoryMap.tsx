@@ -139,8 +139,10 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
                       (function() {
                           const R = 6371e3;
                           const brng = ${heading} * Math.PI / 180;
-                          const lat1 = ${userLocation.latitude} * Math.PI / 180;
-                          const lon1 = ${userLocation.longitude} * Math.PI / 180;
+                          const originLat = ${r.latitude ?? userLocation.latitude};
+                          const originLon = ${r.longitude ?? userLocation.longitude};
+                          const lat1 = originLat * Math.PI / 180;
+                          const lon1 = originLon * Math.PI / 180;
                           
                           // Project 3D line to 2D Ground: ground = slant * cos(tilt)
                           const tiltVal = ${r.tilt ?? 0};
@@ -157,7 +159,7 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
                           const fLon = lon2 * 180 / Math.PI;
                           
                           // Draw the projected 2D Ground Line
-                          L.polyline([[${userLocation.latitude}, ${userLocation.longitude}], [fLat, fLon]], { 
+                          L.polyline([[originLat, originLon], [fLat, fLon]], { 
                               color: '${colors.danger}', 
                               weight: 1, 
                               opacity: 0.6 
@@ -182,7 +184,9 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
         } else {
             return `
                       (function() {
-                          const c = L.circle([${userLocation.latitude}, ${userLocation.longitude}], {
+                          const originLat = ${r.latitude ?? userLocation.latitude};
+                          const originLon = ${r.longitude ?? userLocation.longitude};
+                          const c = L.circle([originLat, originLon], {
                               color: '${colors.accent}',
                               fillColor: '${colors.accent}',
                               fillOpacity: 0.1,
