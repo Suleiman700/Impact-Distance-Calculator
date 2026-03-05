@@ -7,7 +7,7 @@ import {
     Alert,
 } from 'react-native';
 import { Svg as SvgView, Circle, Line, Text as SvgText, G as SvgG } from 'react-native-svg';
-import { captureRef } from 'react-native-view-shot';
+import { Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import { Ionicons } from '@expo/vector-icons';
@@ -131,6 +131,13 @@ export default function ShareSummaryCard({ results, activeSession, onDone, iconO
         try {
             if (!viewRef.current) return;
 
+            if (Platform.OS === 'web') {
+                Alert.alert('Not supported', 'Sharing image as card is not supported on web.');
+                return;
+            }
+
+            // Dynamically require to avoid crash on web bundler
+            const { captureRef } = require('react-native-view-shot');
             const uri = await captureRef(viewRef, { format: 'png', quality: 0.95 });
 
             const isAvailable = await Sharing.isAvailableAsync();

@@ -23,6 +23,7 @@ import { useHistory } from '../contexts/HistoryContext';
 import { useKeepAwake } from 'expo-keep-awake';
 import MissionModal from '../components/MissionModal';
 import MenuDropdown from '../components/MenuDropdown';
+import HelpModal from '../components/HelpModal';
 
 type TargetState = 'idle' | 'recording';
 
@@ -57,6 +58,7 @@ export default function HomeScreen({ navigation }: any) {
     const [mapResult, setMapResult] = useState<TargetResult | null>(null); // Track the full result being viewed
     const [globalMapVisible, setGlobalMapVisible] = useState(false);
     const [missionModalVisible, setMissionModalVisible] = useState(false);
+    const [helpModalVisible, setHelpModalVisible] = useState(false);
     const [heading, setHeading] = useState<number | null>(null);
     const [tilt, setTilt] = useState<number | null>(null);
 
@@ -240,6 +242,12 @@ export default function HomeScreen({ navigation }: any) {
                                 icon: 'settings-outline',
                                 onPress: () => navigation.navigate('Settings'),
                             },
+                            {
+                                id: 'help',
+                                label: 'Help',
+                                icon: 'help-circle-outline',
+                                onPress: () => setHelpModalVisible(true),
+                            },
                         ]}
                     />
                 </View>
@@ -318,6 +326,11 @@ export default function HomeScreen({ navigation }: any) {
                     }}
                     onEnd={endSession}
                     onClose={() => setMissionModalVisible(false)}
+                />
+
+                <HelpModal
+                    visible={helpModalVisible}
+                    onClose={() => setHelpModalVisible(false)}
                 />
             </View>
         </View>
