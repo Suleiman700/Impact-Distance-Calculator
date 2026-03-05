@@ -159,13 +159,12 @@ export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClea
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
         borderRadius: radius.lg,
         borderWidth: 1,
         paddingTop: spacing.lg,
         paddingHorizontal: spacing.lg,
         marginTop: spacing.md,
-        // Ensure the container itself can constrain the height if needed
-        maxHeight: 400,
     },
     header: {
         flexDirection: 'row',
@@ -196,13 +195,11 @@ const styles = StyleSheet.create({
         ...fonts.medium,
     },
     scrollWrapper: {
-        // This wrapper helps enforce the scroll behavior on Android
-        flexShrink: 1,
+        flex: 1,
         marginBottom: spacing.sm,
     },
     scrollArea: {
-        // maxHeight is key, but let's make it more substantial
-        maxHeight: 320,
+        flex: 1,
     },
     scrollContent: {
         paddingBottom: spacing.sm,

@@ -215,26 +215,24 @@ export default function HomeScreen({ navigation }: any) {
                     </TouchableOpacity>
                 </View>
 
-                <View
-                    style={[styles.scrollView, styles.scrollContent]}
-                >
-                    {/* Top Buttons (Standard Layout) */}
-                    {settings.buttonPosition === 'top' && (
-                        <View style={[styles.buttonGrid, { paddingHorizontal: 0 }]}>
-                            {buttonStatuses.map((btn, i) => (
-                                <TargetButton
-                                    key={i}
-                                    index={i}
-                                    state={btn.state}
-                                    duration={null}
-                                    startTime={btn.startTime}
-                                    onPress={() => handleTargetPress(i)}
-                                />
-                            ))}
-                        </View>
-                    )}
+                {/* Top Buttons (Standard Layout) - natural height */}
+                {settings.buttonPosition === 'top' && (
+                    <View style={styles.buttonGrid}>
+                        {buttonStatuses.map((btn, i) => (
+                            <TargetButton
+                                key={i}
+                                index={i}
+                                state={btn.state}
+                                duration={null}
+                                startTime={btn.startTime}
+                                onPress={() => handleTargetPress(i)}
+                            />
+                        ))}
+                    </View>
+                )}
 
-                    {/* Measurement History */}
+                {/* History fills all remaining space with its own internal scroll */}
+                <View style={styles.historyArea}>
                     <ResultCard
                         results={history}
                         onOpenMap={handleOpenMap}
@@ -307,11 +305,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    scrollView: { flex: 1 },
-    scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+    historyArea: {
+        flex: 1,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.sm,
+    },
     buttonGrid: {
         paddingHorizontal: spacing.lg,
-        paddingBottom: spacing.lg,
+        paddingBottom: spacing.sm,
+        paddingTop: spacing.sm,
     },
     bottomButtonArea: {
         borderTopWidth: 1,
