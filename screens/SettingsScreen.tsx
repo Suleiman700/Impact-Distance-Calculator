@@ -166,6 +166,23 @@ export default function SettingsScreen({ navigation }: any) {
                             5. View the estimated distance on the map
                         </Text>
                     </View>
+
+                    {/* Tutorial Button */}
+                    <View style={styles.section}>
+                        <TouchableOpacity
+                            style={[
+                                styles.toggleContainer,
+                                { backgroundColor: colors.card, borderColor: colors.cardBorder, marginTop: spacing.lg },
+                            ]}
+                            onPress={() => navigation.navigate('Intro')}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[styles.toggleLabel, { color: colors.text }]}>
+                                Show Introduction Tutorial
+                            </Text>
+                            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                        </TouchableOpacity>
+                    </View>
                 </ScrollView>
             </View>
         </View>

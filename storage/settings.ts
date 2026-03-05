@@ -7,6 +7,7 @@ export interface Settings {
     targetCount: number;
     theme: 'light' | 'dark';
     showLiveStats: boolean;
+    showOnboarding: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -14,6 +15,7 @@ const DEFAULT_SETTINGS: Settings = {
     targetCount: 1,
     theme: 'light',
     showLiveStats: true,
+    showOnboarding: true,
 };
 
 export async function loadSettings(): Promise<Settings> {

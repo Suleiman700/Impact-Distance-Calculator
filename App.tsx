@@ -4,11 +4,12 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import HomeScreen from './screens/HomeScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import IntroScreen from './screens/IntroScreen';
 
 const Stack = createStackNavigator();
 
 function AppContent() {
-  const { colors } = useSettings();
+  const { settings, colors } = useSettings();
 
   const navTheme = {
     ...DefaultTheme,
@@ -24,11 +25,13 @@ function AppContent() {
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator
+        initialRouteName={settings.showOnboarding ? "Intro" : "Home"}
         screenOptions={{
           headerShown: false,
           cardStyle: { backgroundColor: colors.bg },
         }}
       >
+        <Stack.Screen name="Intro" component={IntroScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen
           name="Settings"
