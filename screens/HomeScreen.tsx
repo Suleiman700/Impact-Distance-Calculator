@@ -216,9 +216,7 @@ export default function HomeScreen({ navigation }: any) {
                 </View>
 
                 <View
-                    style={styles.scrollView}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
+                    style={[styles.scrollView, styles.scrollContent]}
                 >
                     {/* Top Buttons (Standard Layout) */}
                     {settings.buttonPosition === 'top' && (
@@ -244,9 +242,6 @@ export default function HomeScreen({ navigation }: any) {
                         onClear={handleReset}
                         onDelete={deleteResult}
                     />
-
-                    {/* Bottom Padding for ScrollView */}
-                    <View style={{ height: settings.buttonPosition === 'bottom' ? spacing.xxl : spacing.md }} />
                 </View>
 
                 {/* Bottom Buttons (One-Handed Layout) */}
