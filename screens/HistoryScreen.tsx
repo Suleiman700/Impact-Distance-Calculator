@@ -18,6 +18,7 @@ import { useHistory } from '../contexts/HistoryContext';
 import { formatDistance } from '../utils/calculateDistance';
 import { TargetResult, Session } from '../types';
 import ShareSummaryCard from '../components/ShareSummaryCard';
+import ExportModal from '../components/ExportModal';
 
 type TabId = 'records' | 'missions';
 
@@ -28,6 +29,7 @@ export default function HistoryScreen({ navigation }: any) {
     const { history, sessions, activeSession, deleteResult, deleteSession, clearHistory } = useHistory();
     const [activeTab, setActiveTab] = useState<TabId>('records');
     const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
+    const [exportModalVisible, setExportModalVisible] = useState(false);
 
     // Group records by session
     const sections = useMemo(() => {
@@ -116,6 +118,23 @@ export default function HistoryScreen({ navigation }: any) {
         Share.share({ message: csv, title: 'Impact Distance Records' });
     };
 
+    const handleExportJSON = () => {
+        if (history.length === 0) {
+            Alert.alert('No Data', 'There are no records to export.');
+            return;
+        }
+        const exportData = history.map(r => {
+            const session = sessions.find(s => s.id === r.sessionId);
+            return {
+                ...r,
+                sessionName: session?.name ?? null,
+                date: new Date(r.timestamp || 0).toISOString()
+            };
+        });
+        const jsonData = JSON.stringify(exportData, null, 2);
+        Share.share({ message: jsonData, title: 'Impact Distance Records (JSON)' });
+    };
+
     const toggleSession = (id: string) => {
         setExpandedSessions(prev => {
             const next = new Set(prev);
@@ -174,7 +193,7 @@ export default function HistoryScreen({ navigation }: any) {
                     <Ionicons name="arrow-back" size={22} color={colors.textBright} />
                 </TouchableOpacity>
                 <Text style={[styles.pageTitle, { color: colors.textBright }]}>History</Text>
-                <TouchableOpacity onPress={handleExportCSV} hitSlop={12}>
+                <TouchableOpacity onPress={() => setExportModalVisible(true)} hitSlop={12}>
                     <Ionicons name="share-outline" size={22} color={colors.accent} />
                 </TouchableOpacity>
             </View>
@@ -382,6 +401,13 @@ export default function HistoryScreen({ navigation }: any) {
                     )}
                 </ScrollView>
             )}
+
+            <ExportModal
+                visible={exportModalVisible}
+                onClose={() => setExportModalVisible(false)}
+                onExportCSV={handleExportCSV}
+                onExportJSON={handleExportJSON}
+            />
         </View>
     );
 }
