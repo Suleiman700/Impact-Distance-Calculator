@@ -5,6 +5,7 @@ import {
     StyleSheet,
     TouchableOpacity,
     StatusBar,
+    Alert,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { DeviceMotion } from 'expo-sensors';
@@ -180,11 +181,23 @@ export default function HomeScreen({ navigation }: any) {
         }
     }, [buttonStatuses, heading, tilt, userLocation, addResult]);
 
-    const handleClearRecent = async () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        // Instead of clearHistory() (which deletes from DB), we just update the local filter
-        setDisplayClearedAt(Date.now());
-        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null })));
+    const handleClearRecent = () => {
+        Alert.alert(
+            'Clear Recent Records',
+            'This will dismiss the current records from the home screen. They will still be available in the History tab.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Dismiss All',
+                    style: 'destructive',
+                    onPress: () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setDisplayClearedAt(Date.now());
+                        setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null })));
+                    }
+                }
+            ]
+        );
     };
 
     const handleOpenMap = (result: TargetResult) => {

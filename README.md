@@ -2,6 +2,11 @@
 
 **Impact Distance** is a specialized tactical utility app developed during the height of conflict to provide clarity and peace of mind during missile alerts and explosions. 
 
+<div align="center">
+  <img src="assets/images/Home screen-left.png" width="250" alt="Home Screen Tracker" />
+</div>
+
+
 Sometimes, when you see a missile explode or hear a blast, your senses can play tricks on you—making a distant impact feel dangerously close. This app was created as a hobby project to allow users to calculate the exact distance of an impact based on the speed of sound, helping to distinguish between immediate threats and distant events.
 
 ---
@@ -18,7 +23,12 @@ Developed in a war zone, this tool solves a specific problem: **uncertainty.** B
 ### 🎯 Precision Tracking
 *   **Multiple Targets:** Track up to 3 impact points simultaneously (configurable in settings).
 *   **Duration & Distance:** Uses precise stopwatch mechanics to calculate distance based on the speed of sound (~343m/s).
+*   **Manual Position (Anti-Jamming):** Set your location manually on the map to continue tracking impacts even if GPS is jammed or unavailable.
 *   **Real-time Feedback:** Haptic and visual cues ensure you don't miss a millisecond during recording.
+
+<div align="center">
+  <img src="assets/images/Home screen.jpg" width="250" alt="Home Screen Tracker" />
+</div>
 
 ### 🗺️ Advanced Visualization
 *   **Individual Impact Map:** View exactly where an impact occurred relative to your position, including heading and tilt data.
@@ -26,14 +36,28 @@ Developed in a war zone, this tool solves a specific problem: **uncertainty.** B
 *   **Heatmap Integration:** Visualize high-impact zones to understand patterns over time.
 *   **Mission Management:** Group your records into specific "Missions" to keep data organized by date or event.
 
+<div align="center">
+  <img src="assets/images/All targets map.jpg" width="250" alt="Impact Map View" />
+  <img src="assets/images/History screen.jpg" width="250" alt="History" />
+</div>
+
 ### 📤 Data & Sharing
 *   **Share as Image:** Generate a premium, high-resolution summary card with a mini-map and statistics to share on social media or with emergency groups.
 *   **Universal Export:** Export your raw data in **CSV** (for Excel/Sheets) or **JSON** (for data analysis).
+
+<div align="center">
+  <img src="assets/images/Summary.jpg" width="250" alt="Sharing Card" />
+  <img src="assets/images/Export screen.jpg" width="250" alt="Exporting" />
+</div>
 
 ### 📱 Premium UX
 *   **Tactical Aesthetic:** A dark-mode, high-contrast interface designed for low-light environments.
 *   **Responsive Design:** Optimized for one-handed use during stressful situations.
 *   **One-Handed Mode:** Bottom-aligned controls for easier accessibility.
+
+<div align="center">
+  <img src="assets/images/Settings page.jpg" width="250" alt="Settings" />
+</div>
 
 ---
 
