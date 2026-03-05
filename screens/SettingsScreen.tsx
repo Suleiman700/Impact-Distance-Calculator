@@ -12,10 +12,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, radius, fonts } from '../theme';
 import { useSettings } from '../contexts/SettingsContext';
 import { Ionicons } from '@expo/vector-icons';
+import ManualLocationPicker from '../components/ManualLocationPicker';
 
 export default function SettingsScreen({ navigation }: any) {
     const { settings, updateSettings, colors } = useSettings();
     const insets = useSafeAreaInsets();
+    const [pickerVisible, setPickerVisible] = React.useState(false);
 
     const units: Array<'km' | 'mile'> = ['km', 'mile'];
     const themes: Array<'light' | 'dark'> = ['light', 'dark'];
@@ -70,6 +72,64 @@ export default function SettingsScreen({ navigation }: any) {
                                 </TouchableOpacity>
                             ))}
                         </View>
+                    </View>
+
+                    {/* Location Source Section */}
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Location Source</Text>
+                        <View style={[styles.segmented, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                            {['gps', 'manual'].map((m) => (
+                                <TouchableOpacity
+                                    key={m}
+                                    style={[
+                                        styles.segment,
+                                        settings.locationMode === m && { backgroundColor: colors.accent },
+                                    ]}
+                                    onPress={() => handleUpdate({ locationMode: m as any })}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.segmentText,
+                                            { color: colors.textMuted },
+                                            settings.locationMode === m && { color: '#FFF', ...fonts.semiBold },
+                                        ]}
+                                    >
+                                        {m === 'gps' ? 'GPS / Auto' : 'Manual'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {settings.locationMode === 'manual' && (
+                            <View style={[styles.manualInfo, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                                <View style={styles.manualTextContainer}>
+                                    <Text style={[styles.manualLabel, { color: colors.textMuted }]}>
+                                        Manual Location
+                                    </Text>
+                                    <View style={styles.manualStatus}>
+                                        <Ionicons
+                                            name={settings.manualLocation ? "checkmark-circle" : "alert-circle"}
+                                            size={16}
+                                            color={settings.manualLocation ? colors.success : colors.danger}
+                                        />
+                                        <Text style={[styles.manualValue, { color: colors.text }]}>
+                                            {settings.manualLocation
+                                                ? `${settings.manualLocation.latitude.toFixed(4)}, ${settings.manualLocation.longitude.toFixed(4)}`
+                                                : 'Not Set (Required)'}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <TouchableOpacity
+                                    style={[styles.manualButton, { backgroundColor: colors.accentDim }]}
+                                    onPress={() => setPickerVisible(true)}
+                                >
+                                    <Text style={[styles.manualButtonText, { color: colors.accent }]}>
+                                        {settings.manualLocation ? 'Change' : 'Set Location'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
 
                     {/* Unit Toggle */}
@@ -184,6 +244,12 @@ export default function SettingsScreen({ navigation }: any) {
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
+                <ManualLocationPicker
+                    visible={pickerVisible}
+                    initialLocation={settings.manualLocation}
+                    onClose={() => setPickerVisible(false)}
+                    onSelectLocation={(loc) => updateSettings({ manualLocation: loc })}
+                />
             </View>
         </View>
     );
@@ -299,5 +365,42 @@ const styles = StyleSheet.create({
         height: 20,
         borderRadius: 10,
         backgroundColor: '#fff',
+    },
+    manualInfo: {
+        marginTop: spacing.md,
+        padding: spacing.md,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.md,
+    },
+    manualTextContainer: {
+        flex: 1,
+    },
+    manualLabel: {
+        fontSize: 12,
+        ...fonts.medium,
+        marginBottom: 4,
+        textTransform: 'uppercase',
+    },
+    manualStatus: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    manualValue: {
+        fontSize: 14,
+        ...fonts.semiBold,
+    },
+    manualButton: {
+        paddingHorizontal: spacing.md,
+        paddingVertical: 8,
+        borderRadius: radius.sm,
+    },
+    manualButtonText: {
+        fontSize: 14,
+        ...fonts.bold,
     },
 });

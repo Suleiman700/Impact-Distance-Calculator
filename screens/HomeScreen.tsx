@@ -53,6 +53,11 @@ export default function HomeScreen({ navigation }: any) {
 
     // GPS Logic
     useEffect(() => {
+        if (settings.locationMode === 'manual') {
+            setUserLocation(settings.manualLocation);
+            return;
+        }
+
         (async () => {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status === 'granted') {
@@ -66,7 +71,7 @@ export default function HomeScreen({ navigation }: any) {
                 }
             }
         })();
-    }, []);
+    }, [settings.locationMode, settings.manualLocation]);
 
     const handleTargetPress = useCallback((index: number) => {
         setButtonStatuses((prev) => {
@@ -124,7 +129,17 @@ export default function HomeScreen({ navigation }: any) {
                 <View style={styles.header}>
                     <View>
                         <Text style={[styles.title, { color: colors.textBright }]}>Impact Distance</Text>
-                        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Toggle buttons to log events</Text>
+                        <View style={styles.statusRow}>
+                            <Ionicons
+                                name={settings.locationMode === 'gps' ? "location" : "map"}
+                                size={12}
+                            // color={userLocation ? colors.success : colors.danger}
+                            />
+                            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+                                {settings.locationMode === 'gps' ? 'GPS Active' : 'Manual Position'}
+                                {/* {userLocation ? ` (${userLocation.latitude.toFixed(2)}, ${userLocation.longitude.toFixed(2)})` : ' (Not Set)'} */}
+                            </Text>
+                        </View>
                     </View>
                     <TouchableOpacity
                         style={[styles.settingsButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
@@ -183,7 +198,8 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.sm,
     },
     title: { fontSize: 28, ...fonts.bold },
-    subtitle: { fontSize: 14, marginTop: 2 },
+    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+    subtitle: { fontSize: 13 },
     settingsButton: {
         width: 44,
         height: 44,

@@ -8,6 +8,8 @@ export interface Settings {
     theme: 'light' | 'dark';
     showLiveStats: boolean;
     showOnboarding: boolean;
+    locationMode: 'gps' | 'manual';
+    manualLocation: { latitude: number; longitude: number } | null;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -16,6 +18,8 @@ const DEFAULT_SETTINGS: Settings = {
     theme: 'light',
     showLiveStats: true,
     showOnboarding: true,
+    locationMode: 'gps',
+    manualLocation: null,
 };
 
 export async function loadSettings(): Promise<Settings> {
