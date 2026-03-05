@@ -116,7 +116,7 @@ export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClea
                                         <Text style={[styles.duration, { color: colors.textMuted }]}>
                                             {r.duration?.toFixed(3)}s
                                         </Text>
-                                        {(r.heading !== null && r.heading !== undefined) && (
+                                        {/* {(r.heading !== null && r.heading !== undefined) && (
                                             <>
                                                 <Text style={[styles.separator, { color: colors.textMuted }]}> • </Text>
                                                 <Text style={[styles.duration, { color: colors.textMuted }]}>
@@ -131,7 +131,7 @@ export default function ResultCard({ results, onOpenMap, onOpenGlobalMap, onClea
                                                     Tilt {Math.round(r.tilt)}°
                                                 </Text>
                                             </>
-                                        )}
+                                        )} */}
                                     </View>
                                 </View>
 
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     mapButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: spacing.md,
+        paddingHorizontal: spacing.xs,
         paddingVertical: spacing.xs + 2,
         borderRadius: radius.sm,
     },

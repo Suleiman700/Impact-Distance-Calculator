@@ -6,6 +6,7 @@ import {
     ScrollView,
     TouchableOpacity,
     StatusBar,
+    Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { DeviceMotion } from 'expo-sensors';
@@ -58,7 +59,7 @@ export default function HomeScreen({ navigation }: any) {
         setButtonStatuses(Array.from({ length: settings.targetCount }, () => ({ state: 'idle', startTime: null, startHeading: null, startTilt: null })));
     }, [settings.targetCount]);
 
-    // GPS & Compass Logic
+    // Sensor Logic: Always captured for data integrity, even if visual modes are 'off'
     useEffect(() => {
         let headingSub: Location.LocationSubscription | null = null;
         let motionSub: any = null;
@@ -67,42 +68,21 @@ export default function HomeScreen({ navigation }: any) {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status === 'granted') {
                 try {
-                    // Track heading
-                    if (settings.directionMode === 'sensor') {
-                        headingSub = await Location.watchHeadingAsync((headingData) => {
-                            const head = headingData.trueHeading > 0 ? headingData.trueHeading : headingData.magHeading;
-                            setHeading(head);
-                        });
-                    } else {
-                        setHeading(null);
-                    }
+                    // Always start Compass for history metadata
+                    headingSub = await Location.watchHeadingAsync((data) => {
+                        setHeading(data.magHeading);
+                    });
 
-                    // Track tilt
-                    if (settings.tiltEnabled) {
-                        motionSub = DeviceMotion.addListener((motionData) => {
-                            if (motionData.rotation) {
-                                // beta: 0 is flat on back, 1.57 (90deg) is standing up
-                                // We want 0 to be flat, 90 to be pointing straight up
-                                let pitch = motionData.rotation.beta * (180 / Math.PI);
-                                // Adjusting so holding it vertical is 90
-                                if (pitch < 0) pitch = Math.abs(pitch);
-                                setTilt(pitch);
-                            }
-                        });
-                        DeviceMotion.setUpdateInterval(100);
-                    } else {
-                        setTilt(null);
-                    }
-
-                    // Manage location 
-                    if (settings.locationMode !== 'manual') {
-                        const last = await Location.getLastKnownPositionAsync({});
-                        if (last) setUserLocation({ latitude: last.coords.latitude, longitude: last.coords.longitude });
-                        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                        setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-                    }
+                    // Always start DeviceMotion for tilt tracking
+                    motionSub = DeviceMotion.addListener((motion) => {
+                        if (motion.rotation) {
+                            const pitch = -(motion.rotation.beta * 180) / Math.PI;
+                            setTilt(pitch);
+                        }
+                    });
+                    DeviceMotion.setUpdateInterval(100);
                 } catch (e) {
-                    console.warn('Tracking errors:', e);
+                    console.warn('Sensor initialization failed:', e);
                 }
             }
         })();
@@ -111,7 +91,32 @@ export default function HomeScreen({ navigation }: any) {
             if (headingSub) headingSub.remove();
             if (motionSub) motionSub.remove();
         };
-    }, [settings.locationMode, settings.directionMode, settings.tiltEnabled]);
+    }, []); // Run once on mount to keep sensors alive for history capture
+
+    // Location Logic
+    useEffect(() => {
+        let locationSub: any = null;
+
+        (async () => {
+            if (settings.locationMode !== 'manual') {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    try {
+                        const last = await Location.getLastKnownPositionAsync({});
+                        if (last) setUserLocation({ latitude: last.coords.latitude, longitude: last.coords.longitude });
+                        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                        setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+                    } catch (e) {
+                        console.warn('Location tracking errors:', e);
+                    }
+                }
+            }
+        })();
+
+        return () => {
+            if (locationSub && locationSub.remove) locationSub.remove();
+        };
+    }, [settings.locationMode]);
 
     // Fast-fallback for manual location (avoids permissions request delay)
     useEffect(() => {
@@ -119,48 +124,53 @@ export default function HomeScreen({ navigation }: any) {
     }, [settings.locationMode, settings.manualLocation]);
 
     const handleTargetPress = useCallback((index: number) => {
-        // Use a functional update but we need access to the current heading state here.
-        // It's better to read it directly from the component's current scope which is trapped here.
+        const currentTarget = buttonStatuses[index];
         const currentHeading = heading;
+        const currentTilt = tilt;
 
-        setButtonStatuses((prev) => {
-            const updated = [...prev];
-            const current = updated[index];
-
-            if (current.state === 'idle') {
-                // START RECORDING
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                updated[index] = { state: 'recording', startTime: Date.now(), startHeading: currentHeading, startTilt: tilt };
-            } else {
-                // FINISH & SAVE TO HISTORY
-                const endTime = Date.now();
-                const duration = (endTime - (current.startTime || 0)) / 1000;
-                const distance = calcDistance(duration);
-
-                // Add to history list
-                const newResult: TargetResult = {
-                    index, // Button index
-                    startTime: current.startTime,
-                    endTime,
-                    duration,
-                    distance,
-                    heading: current.startHeading,
-                    tilt: current.startTilt,
-                    timestamp: Date.now(), // Unique time for keys
-                    latitude: userLocation?.latitude,
-                    longitude: userLocation?.longitude,
+        if (currentTarget.state === 'idle') {
+            // START RECORDING
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setButtonStatuses(prev => {
+                const updated = [...prev];
+                updated[index] = {
+                    state: 'recording',
+                    startTime: Date.now(),
+                    startHeading: currentHeading,
+                    startTilt: currentTilt
                 };
+                return updated;
+            });
+        } else {
+            // FINISH & SAVE
+            const endTime = Date.now();
+            const duration = (endTime - (currentTarget.startTime || 0)) / 1000;
+            const distance = calcDistance(duration);
 
-                addResult(newResult);
+            const newResult: TargetResult = {
+                index,
+                startTime: currentTarget.startTime,
+                endTime,
+                duration,
+                distance,
+                heading: currentTarget.startHeading,
+                tilt: currentTarget.startTilt,
+                timestamp: Date.now(),
+                latitude: userLocation?.latitude,
+                longitude: userLocation?.longitude,
+            };
 
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            // Call side-effects OUTSIDE of any state setter callback
+            addResult(newResult);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-                // Reset this specific button to Idle
+            setButtonStatuses(prev => {
+                const updated = [...prev];
                 updated[index] = { state: 'idle', startTime: null, startHeading: null, startTilt: null };
-            }
-            return updated;
-        });
-    }, [heading, tilt, userLocation]);
+                return updated;
+            });
+        }
+    }, [buttonStatuses, heading, tilt, userLocation, addResult]);
 
     const handleReset = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -177,7 +187,7 @@ export default function HomeScreen({ navigation }: any) {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
+        <View style={[styles.container, { backgroundColor: colors.bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             <StatusBar barStyle={colors.statusBar} backgroundColor={colors.bg} />
             <View style={styles.content}>
                 <View style={styles.header}>
@@ -205,20 +215,26 @@ export default function HomeScreen({ navigation }: any) {
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    {/* Active Buttons */}
-                    <View style={styles.buttonGrid}>
-                        {buttonStatuses.map((btn, i) => (
-                            <TargetButton
-                                key={i}
-                                index={i}
-                                state={btn.state}
-                                duration={null}
-                                startTime={btn.startTime}
-                                onPress={() => handleTargetPress(i)}
-                            />
-                        ))}
-                    </View>
+                <View
+                    style={styles.scrollView}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Top Buttons (Standard Layout) */}
+                    {settings.buttonPosition === 'top' && (
+                        <View style={[styles.buttonGrid, { paddingHorizontal: 0 }]}>
+                            {buttonStatuses.map((btn, i) => (
+                                <TargetButton
+                                    key={i}
+                                    index={i}
+                                    state={btn.state}
+                                    duration={null}
+                                    startTime={btn.startTime}
+                                    onPress={() => handleTargetPress(i)}
+                                />
+                            ))}
+                        </View>
+                    )}
 
                     {/* Measurement History */}
                     <ResultCard
@@ -229,8 +245,27 @@ export default function HomeScreen({ navigation }: any) {
                         onDelete={deleteResult}
                     />
 
-                    <View style={{ height: spacing.xxl }} />
-                </ScrollView>
+                    {/* Bottom Padding for ScrollView */}
+                    <View style={{ height: settings.buttonPosition === 'bottom' ? spacing.xxl : spacing.md }} />
+                </View>
+
+                {/* Bottom Buttons (One-Handed Layout) */}
+                {settings.buttonPosition === 'bottom' && (
+                    <View style={[styles.bottomButtonArea, { backgroundColor: colors.bg }]}>
+                        <View style={styles.buttonGrid}>
+                            {buttonStatuses.map((btn, i) => (
+                                <TargetButton
+                                    key={i}
+                                    index={i}
+                                    state={btn.state}
+                                    duration={null}
+                                    startTime={btn.startTime}
+                                    onPress={() => handleTargetPress(i)}
+                                />
+                            ))}
+                        </View>
+                    </View>
+                )}
 
                 <MapDrawer
                     visible={mapVisible}
@@ -279,5 +314,13 @@ const styles = StyleSheet.create({
     },
     scrollView: { flex: 1 },
     scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-    buttonGrid: { marginBottom: spacing.lg },
+    buttonGrid: {
+        paddingHorizontal: spacing.lg,
+        paddingBottom: spacing.lg,
+    },
+    bottomButtonArea: {
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.05)',
+        paddingTop: spacing.md,
+    },
 });

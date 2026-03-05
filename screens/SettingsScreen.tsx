@@ -192,6 +192,39 @@ export default function SettingsScreen({ navigation }: any) {
                         </View>
                     </View>
 
+                    {/* Home Layout Toggle */}
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Home Screen Layout</Text>
+                        <View style={[styles.segmented, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                            {['top', 'bottom'].map((pos) => (
+                                <TouchableOpacity
+                                    key={pos}
+                                    style={[
+                                        styles.segment,
+                                        settings.buttonPosition === pos && { backgroundColor: colors.accent },
+                                    ]}
+                                    onPress={() => handleUpdate({ buttonPosition: pos as any })}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.segmentText,
+                                            { color: colors.textMuted },
+                                            settings.buttonPosition === pos && { color: '#FFF', ...fonts.semiBold },
+                                        ]}
+                                    >
+                                        {pos === 'top' ? 'Buttons at Top' : 'One-Hand (Bottom)'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                        <View style={{ marginTop: spacing.sm }}>
+                            <Text style={[{ fontSize: 13, color: colors.textMuted }]}>
+                                Choose where to place the target buttons on the home screen for better reachability.
+                            </Text>
+                        </View>
+                    </View>
+
                     {/* Unit Toggle */}
                     <View style={styles.section}>
                         <Text style={[styles.sectionTitle, { color: colors.text }]}>Distance Unit</Text>

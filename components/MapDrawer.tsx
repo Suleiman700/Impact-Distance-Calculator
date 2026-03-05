@@ -87,7 +87,15 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, headi
     if (!visible && isFullyClosed) return null;
 
     // Use a slighter wider zoom if heading exists so we can see the start and end easily.
-    const zoom = distanceMeters > 0 ? (distanceMeters > 5000 ? 11 : 13) : 15;
+    // const zoom = distanceMeters > 0 ? (distanceMeters > 5000 ? 11 : 13) : 15;
+
+
+    function getZoomFromDistance(distnace) {
+        const zoom = 16 - Math.log2(distnace / 200);
+        return Math.max(1, Math.min(20, zoom)); // clamp zoom between 1–20
+    }
+
+    const zoom = distanceMeters > 0 ? getZoomFromDistance(distanceMeters) : 15;
 
     // Generate the HTML for Leaflet
     const leafletHtml = userLocation ? `
@@ -176,7 +184,8 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, headi
                                "Tilt Offset: " + Math.round(currentTilt) + "°<br/>" +
                                "Ground Dist: " + Math.round(groundDist) + "m";
 
-              L.marker([fLat, fLon], { icon: tgtIcon }).addTo(map).bindPopup(popupContent).openPopup();
+            //   L.marker([fLat, fLon], { icon: tgtIcon }).addTo(map).bindPopup(popupContent).openPopup();
+              L.marker([fLat, fLon], { icon: tgtIcon }).addTo(map).bindPopup(popupContent);
 
               const group = new L.featureGroup([
                   L.marker([${userLocation.latitude}, ${userLocation.longitude}]),
@@ -185,13 +194,28 @@ export default function MapDrawer({ visible, userLocation, distanceMeters, headi
               map.fitBounds(group.getBounds(), { padding: [50, 50] });
 
             } else {
-              // Draw just the circle
-              L.circle([${userLocation.latitude}, ${userLocation.longitude}], {
+              // Draw just the circle using Ground Projection for accuracy
+              const R = 6371e3;
+              const slantDist = ${distanceMeters};
+              const currentTilt = ${tilt ?? 0};
+              const clampedTilt = Math.min(90, Math.max(0, Math.abs(currentTilt)));
+              const tiltRad = clampedTilt * Math.PI / 180;
+              const groundDist = slantDist * Math.cos(tiltRad);
+
+            //   L.circle([${userLocation.latitude}, ${userLocation.longitude}], {
+            //     color: '${colors.accent}',
+            //     fillColor: '${colors.accent}',
+            //     fillOpacity: 0.2,
+            //     radius: groundDist
+            //   }).addTo(map).bindPopup("<b>Target Area</b><br/>Sound Range: " + Math.round(slantDist) + "m<br/>Ground Dist: " + Math.round(groundDist) + "m").openPopup();
+
+            L.circle([${userLocation.latitude}, ${userLocation.longitude}], {
                 color: '${colors.accent}',
                 fillColor: '${colors.accent}',
                 fillOpacity: 0.2,
-                radius: ${distanceMeters}
+                radius: groundDist
               }).addTo(map);
+
             }
           }
         </script>

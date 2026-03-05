@@ -186,13 +186,20 @@ export default function GlobalHistoryMap({ visible, userLocation, history, onClo
                       (function() {
                           const originLat = ${r.latitude ?? userLocation.latitude};
                           const originLon = ${r.longitude ?? userLocation.longitude};
+                          
+                          // Project 3D line to 2D Ground for radius: ground = slant * cos(tilt)
+                          const tiltVal = ${r.tilt ?? 0};
+                          const clampedTilt = Math.min(90, Math.max(0, Math.abs(tiltVal)));
+                          const tiltRad = clampedTilt * Math.PI / 180;
+                          const groundDist = ${r.distance} * Math.cos(tiltRad);
+
                           const c = L.circle([originLat, originLon], {
                               color: '${colors.accent}',
                               fillColor: '${colors.accent}',
                               fillOpacity: 0.1,
                               weight: 2,
-                              radius: ${r.distance}
-                          }).addTo(map).bindPopup("Target ${r.index + 1}: ${r.distance.toFixed(0)}m");
+                              radius: groundDist
+                          }).addTo(map).bindPopup("Target ${r.index + 1}: ${r.distance.toFixed(0)}m (Ground: " + Math.round(groundDist) + "m)");
                           allMarkers.push(c);
                       })();
                   `;

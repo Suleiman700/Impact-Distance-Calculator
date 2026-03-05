@@ -9,7 +9,9 @@ import IntroScreen from './screens/IntroScreen';
 const Stack = createStackNavigator();
 
 function AppContent() {
-  const { settings, colors } = useSettings();
+  const { settings, colors, isLoaded } = useSettings();
+
+  if (!isLoaded) return null;
 
   const navTheme = {
     ...DefaultTheme,
